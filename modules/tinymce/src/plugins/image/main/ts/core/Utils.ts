@@ -126,7 +126,7 @@ const waitLoadImage = (editor: Editor, data: ImageData, imgElm: HTMLElement) => 
 
     if (editor.selection) {
       editor.selection.select(imgElm);
-      editor.nodeChanged();
+      editor.nodeChanged({ location: 'fromImage' });
     }
   };
 

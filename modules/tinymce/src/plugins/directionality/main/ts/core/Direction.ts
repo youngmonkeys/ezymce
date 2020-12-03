@@ -23,7 +23,7 @@ const setDir = function (editor: Editor, dir: string) {
       }
     });
 
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromDirectionPlugin' });
   }
 };
 

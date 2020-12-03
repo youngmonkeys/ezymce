@@ -83,7 +83,7 @@ const toggleReadOnly = (editor: Editor, state: boolean) => {
       editor.focus();
     }
     restoreFakeSelection(editor);
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromReadonlyToggle' });
   }
 };
 

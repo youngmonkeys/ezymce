@@ -167,7 +167,7 @@ const parseCurrentLine = function (editor: Editor, endOffset, delimiter) {
     }
 
     editor.selection.moveToBookmark(bookmark);
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromAutolink' });
   }
 };
 

@@ -76,7 +76,7 @@ const deleteImage = (editor: Editor, image: HTMLElement) => {
 
     editor.dom.remove(elm);
     editor.focus();
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromImageDelete' });
 
     if (editor.dom.isEmpty(editor.getBody())) {
       editor.setContent('');

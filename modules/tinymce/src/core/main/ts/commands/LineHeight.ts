@@ -27,6 +27,6 @@ export const lineHeightQuery = (editor: Editor) => mapRange(editor, (elm) => {
 export const lineHeightAction = (editor: Editor, lineHeight: number) => {
   editor.undoManager.transact(() => {
     editor.formatter.toggle('lineheight', { value: String(lineHeight) });
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromLineHeightAction' });
   });
 };

@@ -269,7 +269,7 @@ const ControlSelection = (selection: EditorSelection, editor: Editor): ControlSe
       Events.fireObjectResized(editor, selectedElm, width, height, 'corner-' + selectedHandle.name);
       dom.setAttrib(selectedElm, 'style', dom.getAttrib(selectedElm, 'style'));
     }
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromResize' });
   };
 
   const showResizeRect = (targetElm: Element) => {
@@ -481,17 +481,20 @@ const ControlSelection = (selection: EditorSelection, editor: Editor): ControlSe
     if (Env.browser.isIE() || Env.browser.isEdge()) {
       // Needs to be mousedown for drag/drop to work on IE 11
       // Needs to be click on Edge to properly select images
+      // TODO: I don't think is needed or helps since other nodeChange are triggered (fromSelectionChange) at the same time
+      // TODO: Or at least the nodeCHnage trigger could be in the 'right click' check
       editor.on('mousedown click', function (e) {
         const target = e.target, nodeName = target.nodeName;
 
         if (!resizeStarted && /^(TABLE|IMG|HR)$/.test(nodeName) && !isWithinContentEditableFalse(target)) {
+          // Check not right mouse button
           if (e.button !== 2) {
             editor.selection.select(target, nodeName === 'TABLE');
           }
 
           // Only fire once since nodeChange is expensive
           if (e.type === 'mousedown') {
-            editor.nodeChanged();
+            editor.nodeChanged({ location: 'fromMouseDown' });
           }
         }
       });

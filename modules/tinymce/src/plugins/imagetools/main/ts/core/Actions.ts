@@ -166,7 +166,7 @@ const updateSelectedImage = function (editor: Editor, origBlob: Blob, ir: ImageR
     editor.undoManager.transact(() => {
       function imageLoadedHandler() {
         editor.$(selectedImage).off('load', imageLoadedHandler);
-        editor.nodeChanged();
+        editor.nodeChanged({ location: 'fromImageTools' });
 
         if (uploadImmediately) {
           editor.editorUpload.uploadImagesAuto();

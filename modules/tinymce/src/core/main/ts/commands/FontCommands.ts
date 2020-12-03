@@ -49,7 +49,7 @@ const normalizeFontNames = (font: string) => {
 export const fontNameAction = (editor: Editor, value: string) => {
   const font = fromFontSizeNumber(editor, value);
   editor.formatter.toggle('fontname', { value: normalizeFontNames(font) });
-  editor.nodeChanged();
+  editor.nodeChanged({ location: 'fromFontNameAction' });
 };
 
 export const fontNameQuery = (editor: Editor) => mapRange(editor, (elm: SugarElement<Element>) =>
@@ -58,7 +58,7 @@ export const fontNameQuery = (editor: Editor) => mapRange(editor, (elm: SugarEle
 
 export const fontSizeAction = (editor: Editor, value: string) => {
   editor.formatter.toggle('fontsize', { value: fromFontSizeNumber(editor, value) });
-  editor.nodeChanged();
+  editor.nodeChanged({ location: 'fromFontSizeAction' });
 };
 
 export const fontSizeQuery = (editor: Editor) => mapRange(editor, (elm: SugarElement<Element>) =>

@@ -16,7 +16,7 @@ const setContent = function (editor, html) {
   });
 
   editor.selection.setCursorLocation();
-  editor.nodeChanged();
+  editor.nodeChanged({ location: 'fromCodePlugin' });
 };
 
 const getContent = function (editor) {

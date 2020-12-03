@@ -30,7 +30,7 @@ const insertInlineBoundarySpaceOrNbsp = (root: SugarElement, pos: CaretPosition)
 
 const setSelection = (editor: Editor) => (pos: CaretPosition) => {
   editor.selection.setRng(pos.toRange());
-  editor.nodeChanged();
+  editor.nodeChanged( { location: 'fromSetSelection' } );
   return true;
 };
 

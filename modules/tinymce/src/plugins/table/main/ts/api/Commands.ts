@@ -44,7 +44,7 @@ const registerCommands = (editor: Editor, actions: TableActions, cellSelection: 
         rng.setStart(cursor.dom, 0);
         rng.setEnd(cursor.dom, 0);
         editor.selection.setRng(rng);
-        editor.nodeChanged();
+        editor.nodeChanged({ location: 'fromTableDelete' });
       }
     });
   });

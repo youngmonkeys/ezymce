@@ -140,7 +140,7 @@ const handleInsert = function (editor: Editor, html: string) {
 
   editor.insertContent(html);
   selectPlaceholder(editor, beforeObjects);
-  editor.nodeChanged();
+  editor.nodeChanged({ location: 'fromMediaDialog' });
 };
 
 const submitForm = function (prevData: MediaData, newData: MediaData, editor: Editor) {

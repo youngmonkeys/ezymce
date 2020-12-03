@@ -49,7 +49,7 @@ const renderElementPath = (editor: Editor, settings, providersBackstage: UiFacto
       action: (_btn) => {
         editor.focus();
         editor.selection.select(part.element);
-        editor.nodeChanged();
+        editor.nodeChanged({ location: 'fromElementPath' });
       },
       buttonBehaviours: Behaviour.derive([
         DisablingConfigs.button(providersBackstage.isDisabled),

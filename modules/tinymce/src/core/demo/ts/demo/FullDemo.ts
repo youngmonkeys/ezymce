@@ -102,6 +102,14 @@ export default function () {
     },
     setup(ed) {
       makeSidebar(ed, 'sidebar1', 'green', 200);
+      ed.on('NodeChange', (e) => {
+        console.log('node change');
+        console.log(e);
+      });
+      // ed.ui.registry.addButton('readonly', {
+      //   text: 'Readonly',
+      //   onAction: () => ed.mode.isReadOnly() ? ed.mode.set('design') : ed.mode.set('readonly');
+      // })
     },
     plugins: [
       'autosave advlist autolink link image lists charmap print preview hr anchor pagebreak spellchecker toc',
@@ -112,8 +120,8 @@ export default function () {
     // rtl_ui: true,
     add_unload_trigger: false,
     autosave_ask_before_unload: false,
-    toolbar: 'undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsizeselect fontselect formatselect styleselect insertfile | styleselect | ' +
-    'bullist numlist outdent indent | link image | print preview media fullpage | forecolor backcolor emoticons table codesample code | ltr rtl',
+    toolbar: 'readonly save | undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsizeselect fontselect formatselect styleselect insertfile | styleselect | ' +
+    'bullist numlist outdent indent | link image | print preview media fullpage | forecolor backcolor emoticons table codesample code | ltr rtl ',
     contextmenu: 'link linkchecker image imagetools table lists spellchecker configurepermanentpen',
 
     // Multiple toolbar array
@@ -153,7 +161,8 @@ export default function () {
     toolbar_mode: 'floating',
     emoticons_database_url: '/src/plugins/emoticons/main/js/emojis.js',
     resize_img_proportional: true,
-    format_empty_lines: true
+    format_empty_lines: true,
+    save_onsavecallback: () => { console.log('saved'); }
   };
 
   tinymce.init(settings);

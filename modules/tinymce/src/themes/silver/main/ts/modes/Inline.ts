@@ -109,7 +109,7 @@ const render = (editor: Editor, uiComponents: RenderUiComponents, rawUiConfig: R
 
     setupEvents(editor, targetElm, ui, toolbarPersist);
 
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromInline' });
   };
 
   editor.on('show', render);

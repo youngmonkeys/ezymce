@@ -262,7 +262,7 @@ const initEditor = function (editor: Editor) {
   Events.fireInit(editor);
   editor.focus(true);
   moveSelectionToFirstCaretPosition(editor);
-  editor.nodeChanged({ initial: true });
+  editor.nodeChanged({ location: 'fromInit', initial: true });
   editor.execCallback('init_instance_callback', editor);
   autoFocus(editor);
 };

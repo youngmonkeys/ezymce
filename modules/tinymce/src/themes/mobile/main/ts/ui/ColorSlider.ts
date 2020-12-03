@@ -100,7 +100,7 @@ const sketch = (realm: MobileRealm, editor: Editor) => {
     onChange(slider, thumb, color) {
       editor.undoManager.transact(() => {
         editor.formatter.apply('forecolor', { value: color });
-        editor.nodeChanged();
+        editor.nodeChanged({ location: 'fromColorSlider' });
       });
     },
     getInitialValue(/* slider */) {

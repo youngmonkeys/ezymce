@@ -903,7 +903,7 @@ class Editor implements EditorObservable {
     this.setDirty(false);
 
     // Fire a node change event
-    this.nodeChanged();
+    this.nodeChanged({ location: 'fromResetContent' });
   }
 
   /**

@@ -28,7 +28,8 @@ const save = function (editor) {
   // Use callback instead
   if (Settings.hasOnSaveCallback(editor)) {
     editor.execCallback('save_onsavecallback', editor);
-    editor.nodeChanged();
+    // TODO: Can probably remove
+    editor.nodeChanged({ location: 'fromSave1' });
     return;
   }
 
@@ -45,7 +46,8 @@ const save = function (editor) {
       }
     }
 
-    editor.nodeChanged();
+    // TODO: Can probably remove
+    editor.nodeChanged({ location: 'fromSave2' });
   } else {
     displayErrorMessage(editor, 'Error: No form element found.');
   }

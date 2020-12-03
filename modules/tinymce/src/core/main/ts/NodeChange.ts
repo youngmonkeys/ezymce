@@ -54,6 +54,7 @@ class NodeChange {
 
     // IE has a bug where it fires a selectionchange on right click that has a range at the start of the body
     // When the contextmenu event fires the selection is located at the right location
+    // TODO: Maybe this isn't needed if we already have the 'mouseup' trigger below
     editor.on('contextmenu', function () {
       editor.fire('SelectionChange');
     });
@@ -70,7 +71,7 @@ class NodeChange {
       }
 
       if (hasAnyRanges(editor) && !self.isSameElementPath(startElm) && editor.dom.isChildOf(startElm, editor.getBody())) {
-        editor.nodeChanged({ selectionChange: true });
+        editor.nodeChanged({ location: 'fromSelectionChange', selectionChange: true });
       }
     });
 
@@ -81,10 +82,10 @@ class NodeChange {
         // isn't updated until after you click outside a selected image
         if (editor.selection.getNode().nodeName === 'IMG') {
           Delay.setEditorTimeout(editor, function () {
-            editor.nodeChanged();
+            editor.nodeChanged({ location: 'fromDelayedMouseup' });
           });
         } else {
-          editor.nodeChanged();
+          editor.nodeChanged({ location: 'fromMouseup' });
         }
       }
     });
@@ -113,6 +114,7 @@ class NodeChange {
       }
 
       // Get parents and add them to object
+      // TODO: Is there a bug here? Only returns single parent, make include selected node
       parents = [];
       this.editor.dom.getParent(node, function (node) {
         if (node === root) {

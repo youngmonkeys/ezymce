@@ -27,7 +27,7 @@ const selectionIndentation = (editor: Editor, indentation: Indentation): boolean
 
     editor.selection.moveToBookmark(bookmark);
     editor.selection.setRng(Range.normalizeRange(editor.selection.getRng()));
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromIndentation' });
     isHandled = true;
   }
 

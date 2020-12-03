@@ -111,7 +111,7 @@ const addRootBlocks = function (editor: Editor) {
     rng.setStart(startContainer, startOffset);
     rng.setEnd(endContainer, endOffset);
     selection.setRng(rng);
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromForceBlock' });
   }
 };
 

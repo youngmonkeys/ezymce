@@ -660,7 +660,7 @@ const remove = (ed: Editor, name: string, vars?: FormatVars, node?: Node | Range
       FormatUtils.moveStart(dom, selection, selection.getRng());
     }
 
-    ed.nodeChanged();
+    ed.nodeChanged({ location: 'fromRemoveFormat' });
   } else {
     CaretFormat.removeCaretFormat(ed, name, vars, similar);
   }

@@ -58,7 +58,7 @@ const deleteFromTo = (editor: Editor, caret: Cell<Text>, from: CaretPosition, to
       .map(setCaretLocation(editor, caret));
   });
 
-  editor.nodeChanged();
+  editor.nodeChanged({ location: 'fromBoundaryDelete' });
 };
 
 const rescope = (rootNode: Node, node: Node) => {

@@ -11,6 +11,7 @@
     <h1>Tinymce full featured Page</h1>
     <div id="ephox-ui">
       <textarea></textarea>
+      <button onclick="tinymce.activeEditor.mode.isReadOnly() ? tinymce.activeEditor.mode.set('design') : tinymce.activeEditor.mode.set('readonly')" >readonly</button>
     </div>
     <div class="tinymce">Inline demo</div>
     <script src="../../../../js/tinymce/tinymce.js"></script>

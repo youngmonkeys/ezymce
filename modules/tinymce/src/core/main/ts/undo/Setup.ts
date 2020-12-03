@@ -53,6 +53,7 @@ export const registerEvents = (editor: Editor, undoManager: UndoManager, locks: 
 
   editor.on('keyup', (e) => {
     const keyCode = e.keyCode;
+    let triggerNodeChange = false;
 
     // If key is prevented then don't add undo level
     // This would happen on keyboard shortcuts for example
@@ -60,13 +61,22 @@ export const registerEvents = (editor: Editor, undoManager: UndoManager, locks: 
       return;
     }
 
+    /*
+      First set - Home, End, PgUp or PgDwn
+      Second set - Left, Right, Down, Up
+      Third set - Insert
+      Fourth set - Ctrl
+    */
     if ((keyCode >= 33 && keyCode <= 36) || (keyCode >= 37 && keyCode <= 40) || keyCode === 45 || e.ctrlKey) {
       addNonTypingUndoLevel();
-      editor.nodeChanged();
+      // editor.nodeChanged({ location: 'fromKeyUp1' });
+      triggerNodeChange = true;
     }
 
+    // Delete or backspace
     if (keyCode === 46 || keyCode === 8) {
-      editor.nodeChanged();
+      // editor.nodeChanged({ location: 'fromKeyUp2' });
+      triggerNodeChange = true;
     }
 
     // Fire a TypingUndo/Change event on the first character entered
@@ -78,7 +88,12 @@ export const registerEvents = (editor: Editor, undoManager: UndoManager, locks: 
 
       editor.fire('TypingUndo');
       isFirstTypedCharacter.set(false);
-      editor.nodeChanged();
+      triggerNodeChange = true;
+      // editor.nodeChanged({ location: 'fromKeyUp3' });
+    }
+
+    if (triggerNodeChange) {
+      editor.nodeChanged({ location: 'fromKeyUp4' });
     }
   });
 
@@ -131,7 +146,7 @@ export const registerEvents = (editor: Editor, undoManager: UndoManager, locks: 
 
   editor.on('AddUndo Undo Redo ClearUndos', (e) => {
     if (!e.isDefaultPrevented()) {
-      editor.nodeChanged();
+      editor.nodeChanged({ location: 'from' + e.type });
     }
   });
 };

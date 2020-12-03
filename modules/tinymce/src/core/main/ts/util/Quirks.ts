@@ -64,18 +64,16 @@ const Quirks = function (editor: Editor): Quirks {
    * @param {DragEvent} e Event object
    */
   const setMceInternalContent = function (e) {
-    let selectionHtml, internalContent;
-
     if (e.dataTransfer) {
       if (editor.selection.isCollapsed() && e.target.tagName === 'IMG') {
         selection.select(e.target);
       }
 
-      selectionHtml = editor.selection.getContent();
+      const selectionHtml = editor.selection.getContent();
 
       // Safari/IE doesn't support custom dataTransfer items so we can only use URL and Text
       if (selectionHtml.length > 0) {
-        internalContent = mceInternalUrlPrefix + escape(editor.id) + ',' + escape(selectionHtml);
+        const internalContent = mceInternalUrlPrefix + escape(editor.id) + ',' + escape(selectionHtml);
         e.dataTransfer.setData(mceInternalDataType, internalContent);
       }
     }
@@ -184,7 +182,7 @@ const Quirks = function (editor: Editor): Quirks {
           editor.selection.setCursorLocation(body, 0);
         }
 
-        editor.nodeChanged();
+        editor.nodeChanged({ location: 'fromQuirkKeydown' });
       }
     });
   };
@@ -315,13 +313,15 @@ const Quirks = function (editor: Editor): Quirks {
       // Needs to be the setBaseAndExtend or it will fail to select floated images
       if (/^(IMG|HR)$/.test(target.nodeName) && dom.getContentEditableParent(target) !== 'false') {
         e.preventDefault();
-        editor.selection.select(target);
-        editor.nodeChanged();
+        selection.select(target);
+        editor.nodeChanged({ location: 'fromQuirkControlSelect' });
       }
 
       if (target.nodeName === 'A' && dom.hasClass(target, 'mce-item-anchor')) {
         e.preventDefault();
         selection.select(target);
+        // TODO: Maybe add this here as well
+        editor.nodeChanged({ location: 'fromQuirkControlSelect' });
       }
     });
   };
@@ -592,7 +592,7 @@ const Quirks = function (editor: Editor): Quirks {
           editor.getBody().focus();
           editor.selection.setRng(rng);
           editor.selection.normalize();
-          editor.nodeChanged();
+          editor.nodeChanged({ location: 'fromQuirkBodyHeight' });
         }
       });
     }

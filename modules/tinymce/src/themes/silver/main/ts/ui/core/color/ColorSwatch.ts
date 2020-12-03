@@ -34,7 +34,7 @@ const applyFormat = function (editor: Editor, format, value) {
   editor.undoManager.transact(function () {
     editor.focus();
     editor.formatter.apply(format, { value });
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromColorSwatchApply' });
   });
 };
 
@@ -42,7 +42,7 @@ const removeFormat = function (editor: Editor, format) {
   editor.undoManager.transact(function () {
     editor.focus();
     editor.formatter.remove(format, { value: null }, null, true);
-    editor.nodeChanged();
+    editor.nodeChanged({ location: 'fromColorSwatchRemove' });
   });
 };
 

@@ -20,6 +20,7 @@ import * as SelectionUtils from '../selection/SelectionUtils';
 import * as TableCellSelection from '../selection/TableCellSelection';
 import * as Settings from '../api/Settings';
 import * as Empty from '../dom/Empty';
+// import * as RangeCompare from '../selection/RangeCompare';
 import * as CaretFormat from './CaretFormat';
 import * as ExpandRange from './ExpandRange';
 import { isCaretNode } from './FormatContainer';
@@ -70,6 +71,13 @@ const applyFormat = function (ed: Editor, name: string, vars?: FormatVars, node?
   const isCollapsed = !node && ed.selection.isCollapsed();
   const dom = ed.dom;
   const selection = ed.selection;
+  // const nativeRng = ed.selection.getRng();
+  // const fakeRng = {
+  //   startContainer: nativeRng.startContainer,
+  //   startOffset: nativeRng.startOffset,
+  //   endContainer: nativeRng.endContainer,
+  //   endOffset: nativeRng.endOffset
+  // };
 
   // TODO: Add actual type for fmt below
   const setElementFormat = function (elm: Node, fmt?: ApplyFormat) {
@@ -366,13 +374,17 @@ const applyFormat = function (ed: Editor, name: string, vars?: FormatVars, node?
         });
 
         FormatUtils.moveStart(dom, selection, selection.getRng());
-        ed.nodeChanged();
+        // Want to fire node change when selection changes
+        ed.nodeChanged({ location: 'fromApplyFormat' });
       } else {
         CaretFormat.applyCaretFormat(ed, name, vars);
       }
     }
 
     Hooks.postProcess(name, ed);
+    // if (!RangeCompare.isEq(fakeRng, ed.selection.getRng())) {
+    //   ed.nodeChanged({ location: 'fromApplyFormat2' });
+    // }
   }
 };
 
