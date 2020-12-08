@@ -1,35 +1,64 @@
 export interface Throttler<A extends any[]> {
   readonly cancel: () => void;
   readonly throttle: (...args: A) => void;
+  readonly flush?: () => void;
+}
+interface Options {
+  leading?: boolean;
+  trailing?: boolean;
 }
 
 // Run a function fn after rate ms. If another invocation occurs
 // during the time it is waiting, update the arguments f will run
 // with (but keep the current schedule)
-export const adaptable = function <A extends any[]> (fn: (...a: A) => void, rate: number): Throttler<A> {
+// TODO: Add options argument, add flush function
+export const adaptable = function <A extends any[]> (fn: (...a: A) => void, rate: number, options?: Options): Throttler<A> {
   let timer: number | null = null;
   let args: A | null = null;
+  let calls = 0;
+  const leading = options?.leading || false;
+  const givenTrailing = options?.trailing || false;
+  const trailing = !leading && !givenTrailing ? true : givenTrailing;
+
+  const reset = () => {
+    timer = null;
+    args = null;
+    calls = 0;
+  };
+
   const cancel = function () {
     if (timer !== null) {
       clearTimeout(timer);
-      timer = null;
-      args = null;
     }
+    reset();
   };
+
+  const flush = () => {
+    fn.apply(null, args === null ? [] : args);
+    cancel();
+  };
+
   const throttle = function (...newArgs: A) {
     args = newArgs;
+    calls++;
     if (timer === null) {
+      if (leading) {
+        fn.apply(null, args === null ? [] : args);
+        args = null;
+      }
       timer = setTimeout(function () {
         const blargs = args === null ? [] : args;
-        fn.apply(null, blargs);
-        timer = null;
-        args = null;
+        if (trailing && calls > 1) {
+          fn.apply(null, blargs);
+        }
+        reset();
       }, rate);
     }
   };
 
   return {
     cancel,
+    flush,
     throttle
   };
 };
