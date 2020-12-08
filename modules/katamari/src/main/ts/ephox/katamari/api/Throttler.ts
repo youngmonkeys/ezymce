@@ -3,6 +3,7 @@ export interface Throttler<A extends any[]> {
   readonly throttle: (...args: A) => void;
   readonly flush?: () => void;
 }
+
 interface Options {
   leading?: boolean;
   trailing?: boolean;
@@ -11,7 +12,6 @@ interface Options {
 // Run a function fn after rate ms. If another invocation occurs
 // during the time it is waiting, update the arguments f will run
 // with (but keep the current schedule)
-// TODO: Add options argument, add flush function
 export const adaptable = function <A extends any[]> (fn: (...a: A) => void, rate: number, options?: Options): Throttler<A> {
   let timer: number | null = null;
   let args: A | null = null;
@@ -48,7 +48,7 @@ export const adaptable = function <A extends any[]> (fn: (...a: A) => void, rate
       }
       timer = setTimeout(function () {
         const blargs = args === null ? [] : args;
-        if (trailing && calls > 1) {
+        if ((trailing && !leading) || (trailing && leading && calls > 1)) {
           fn.apply(null, blargs);
         }
         reset();
@@ -67,13 +67,15 @@ export const adaptable = function <A extends any[]> (fn: (...a: A) => void, rate
 // during the time it is waiting, ignore it completely.
 export const first = function <A extends any[]> (fn: (...a: A) => void, rate: number): Throttler<A> {
   let timer: number | null = null;
+
   const cancel = function () {
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
     }
   };
-  const throttle = function (...args) {
+
+  const throttle = function (...args: A) {
     if (timer === null) {
       timer = setTimeout(function () {
         fn.apply(null, args);
@@ -93,13 +95,15 @@ export const first = function <A extends any[]> (fn: (...a: A) => void, rate: nu
 // with the new arguments.
 export const last = function <A extends any[]> (fn: (...a: A) => void, rate: number): Throttler<A> {
   let timer: number | null = null;
+
   const cancel = function () {
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
     }
   };
-  const throttle = function (...args) {
+
+  const throttle = function (...args: A) {
     if (timer !== null) {
       clearTimeout(timer);
     }

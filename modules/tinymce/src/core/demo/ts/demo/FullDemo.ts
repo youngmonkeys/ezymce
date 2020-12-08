@@ -106,10 +106,6 @@ export default function () {
         console.log('node change');
         console.log(e);
       });
-      // ed.ui.registry.addButton('readonly', {
-      //   text: 'Readonly',
-      //   onAction: () => ed.mode.isReadOnly() ? ed.mode.set('design') : ed.mode.set('readonly');
-      // })
     },
     plugins: [
       'autosave advlist autolink link image lists charmap print preview hr anchor pagebreak spellchecker toc',
@@ -120,8 +116,8 @@ export default function () {
     // rtl_ui: true,
     add_unload_trigger: false,
     autosave_ask_before_unload: false,
-    toolbar: 'readonly save | undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsizeselect fontselect formatselect styleselect insertfile | styleselect | ' +
-    'bullist numlist outdent indent | link image | print preview media fullpage | forecolor backcolor emoticons table codesample code | ltr rtl ',
+    toolbar: 'undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsizeselect fontselect formatselect styleselect insertfile | styleselect | ' +
+    'bullist numlist outdent indent | link image | print preview media fullpage | forecolor backcolor emoticons table codesample code | ltr rtl',
     contextmenu: 'link linkchecker image imagetools table lists spellchecker configurepermanentpen',
 
     // Multiple toolbar array
