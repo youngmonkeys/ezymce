@@ -479,8 +479,8 @@ class Editor implements EditorObservable {
    * @method nodeChanged
    * @param {Object} args Optional args to pass to NodeChange event handlers.
    */
-  public nodeChanged(args?: any) {
-    this._nodeChangeDispatcher.nodeChanged(args);
+  public nodeChanged(args?: any, throttle?: boolean) {
+    this._nodeChangeDispatcher.nodeChanged(args, throttle);
   }
 
   /**

@@ -5,13 +5,48 @@
  * For commercial licenses see https://www.tiny.cloud/
  */
 
+import { Throttler } from '@ephox/katamari';
 import DomQuery from './api/dom/DomQuery';
 import Editor from './api/Editor';
 import Env from './api/Env';
+import { NodeChangeEvent } from './api/EventTypes';
 import * as Settings from './api/Settings';
 import Delay from './api/util/Delay';
 import * as RangeCompare from './selection/RangeCompare';
 import { hasAnyRanges } from './selection/SelectionUtils';
+
+const internalNodeChanged = (editor: Editor) => (args?: Record<string, any>) => {
+  const selection = editor.selection;
+  let node: Node, parents: Node[], root: Node;
+
+  // Fix for bug #1896577 it seems that this can not be fired while the editor is loading
+  if (editor.initialized && selection && !Settings.shouldDisableNodeChange(editor) && !editor.mode.isReadOnly()) {
+    // Get start node
+    root = editor.getBody();
+    node = selection.getStart(true) || root;
+
+    // Make sure the node is within the editor root or is the editor root
+    if (node.ownerDocument !== editor.getDoc() || !editor.dom.isChildOf(node, root)) {
+      node = root;
+    }
+
+    // Get parents and add them to object
+    parents = [];
+    editor.dom.getParent(node, function (node) {
+      if (node === root) {
+        return true;
+      }
+
+      parents.push(node);
+    });
+
+    args = args || {};
+    args.element = node;
+    args.parents = parents;
+
+    editor.fire('NodeChange', args as NodeChangeEvent);
+  }
+};
 
 /**
  * This class handles the nodechange event dispatching both manual and through selection change events.
@@ -23,11 +58,13 @@ import { hasAnyRanges } from './selection/SelectionUtils';
 class NodeChange {
   private readonly editor: Editor;
   private lastPath: DomQuery | [] = [];
+  private readonly nodeChangeThrottler: Throttler.Throttler<any[]>;
 
   public constructor(editor: Editor) {
     this.editor = editor;
     let lastRng;
     const self = this;
+    this.nodeChangeThrottler = Throttler.adaptable(internalNodeChanged(editor), 15, { leading: true, trailing: true });
 
     // Gecko doesn't support the "selectionchange" event
     if (!('onselectionchange' in editor.getDoc())) {
@@ -71,7 +108,7 @@ class NodeChange {
       }
 
       if (hasAnyRanges(editor) && !self.isSameElementPath(startElm) && editor.dom.isChildOf(startElm, editor.getBody())) {
-        editor.nodeChanged({ location: 'fromSelectionChange', selectionChange: true });
+        editor.nodeChanged({ location: 'fromSelectionChange', selectionChange: true }, true);
       }
     });
 
@@ -82,10 +119,10 @@ class NodeChange {
         // isn't updated until after you click outside a selected image
         if (editor.selection.getNode().nodeName === 'IMG') {
           Delay.setEditorTimeout(editor, function () {
-            editor.nodeChanged({ location: 'fromDelayedMouseup' });
+            editor.nodeChanged({ location: 'fromDelayedMouseup' }, true);
           });
         } else {
-          editor.nodeChanged({ location: 'fromMouseup' });
+          editor.nodeChanged({ location: 'fromMouseup' }, true);
         }
       }
     });
@@ -98,38 +135,25 @@ class NodeChange {
    * @method nodeChanged
    * @param {Object} args Optional args to pass to NodeChange event handlers.
    */
-  public nodeChanged(args?) {
-    const selection = this.editor.selection;
-    let node, parents, root;
 
-    // Fix for bug #1896577 it seems that this can not be fired while the editor is loading
-    if (this.editor.initialized && selection && !Settings.shouldDisableNodeChange(this.editor) && !this.editor.mode.isReadOnly()) {
-      // Get start node
-      root = this.editor.getBody();
-      node = selection.getStart(true) || root;
+  public nodeChanged(args?: Record<string, any>, throttle: boolean = false) {
+    // Old
+    // internalNodeChanged(this.editor)(args);
 
-      // Make sure the node is within the editor root or is the editor root
-      if (node.ownerDocument !== this.editor.getDoc() || !this.editor.dom.isChildOf(node, root)) {
-        node = root;
-      }
+    // If throttle is false by default this will have the least effect on the code and existing tests. Althoug, it won't actually do much to help reduce the number of nodeChanged calls
+    // If throttle is true by default, this will reduce the overall number of nodeChanged calls but is more risky and affects quite a few existing tests ~18
 
-      // Get parents and add them to object
-      // TODO: Is there a bug here? Only returns single parent, make include selected node
-      parents = [];
-      this.editor.dom.getParent(node, function (node) {
-        if (node === root) {
-          return true;
-        }
-
-        parents.push(node);
-      });
-
-      args = args || {};
-      args.element = node;
-      args.parents = parents;
-
-      this.editor.fire('NodeChange', args);
+    // Only throttle nodeChanged call if explicitly specified (this won't be as effective but doesn't affect existing tests)
+    this.nodeChangeThrottler.throttle(args);
+    if (throttle === false) {
+      this.nodeChangeThrottler.flush();
     }
+    // or
+    // if (throttle === false) {
+    //   internalNodeChanged(this.editor)(args);
+    // } else {
+    //   this.nodeChangeThrottler.throttle(args);
+    // }
   }
 
   /**
@@ -139,7 +163,7 @@ class NodeChange {
    * @return {Boolean} True if the element path is the same false if it's not.
    */
   private isSameElementPath(startElm) {
-    let i;
+    let i: number;
 
     const currentPath = this.editor.$(startElm).parentsUntil(this.editor.getBody()).add(startElm);
     if (currentPath.length === this.lastPath.length) {
