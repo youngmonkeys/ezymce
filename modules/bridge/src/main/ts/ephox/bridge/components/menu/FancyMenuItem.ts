@@ -11,6 +11,7 @@ export interface FancyMenuItem {
   type: 'fancymenuitem';
   fancytype: keyof FancyActionArgsMap;
   onAction: <K extends keyof FancyActionArgsMap>(data: FancyActionArgsMap[K]) => void;
+  initData?: Record<string, any>;
 }
 
 export interface FancyActionArgsMap {

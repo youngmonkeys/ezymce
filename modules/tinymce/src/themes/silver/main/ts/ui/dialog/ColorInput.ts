@@ -13,8 +13,7 @@ import { Dialog } from '@ephox/bridge';
 import { Fun, Future, Id, Optional, Result } from '@ephox/katamari';
 import { Css, SugarElement, Traverse } from '@ephox/sugar';
 
-import { UiFactoryBackstageShared } from '../../backstage/Backstage';
-import { UiFactoryBackstageForColorInput } from '../../backstage/ColorInputBackstage';
+import { UiFactoryBackstage } from '../../backstage/Backstage';
 import * as ReadOnly from '../../ReadOnly';
 import { renderLabel } from '../alien/FieldLabeller';
 import * as ColorSwatch from '../core/color/ColorSwatch';
@@ -40,7 +39,7 @@ interface ColorPickerCancelEvent extends CustomEvent {
 
 type ColorInputSpec = Omit<Dialog.ColorInput, 'type'>;
 
-export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactoryBackstageShared, colorInputBackstage: UiFactoryBackstageForColorInput): SimpleSpec => {
+export const renderColorInput = (spec: ColorInputSpec, backstage: UiFactoryBackstage): SimpleSpec => {
   const pField = FormField.parts.field({
     factory: Input,
     inputClasses: [ 'tox-textfield' ],
@@ -49,7 +48,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
 
     inputBehaviours: Behaviour.derive([
       Disabling.config({
-        disabled: sharedBackstage.providers.isDisabled
+        disabled: backstage.shared.providers.isDisabled
       }),
       ReadOnly.receivingConfig(),
       Tabstopping.config({ }),
@@ -92,7 +91,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
     selectOnFocus: false
   });
 
-  const pLabel: Optional<AlloySpec> = spec.label.map((label) => renderLabel(label, sharedBackstage.providers));
+  const pLabel: Optional<AlloySpec> = spec.label.map((label) => renderLabel(label, backstage.shared.providers));
 
   const emitSwatchChange = (colorBit, value) => {
     AlloyTriggers.emitWith(colorBit, colorSwatchChangeEvent, {
@@ -103,7 +102,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
   const onItemAction = (comp: AlloyComponent, value) => {
     memColorButton.getOpt(comp).each((colorBit) => {
       if (value === 'custom') {
-        colorInputBackstage.colorPicker((valueOpt) => {
+        backstage.colorinput.colorPicker((valueOpt) => {
           valueOpt.fold(
             () => AlloyTriggers.emit(colorBit, colorPickerCancelEvent),
             (value) => {
@@ -125,7 +124,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
       dom: {
         tag: 'span',
         attributes: {
-          'aria-label': sharedBackstage.providers.translate('Color swatch')
+          'aria-label': backstage.shared.providers.translate('Color swatch')
         }
       },
       layouts: {
@@ -133,11 +132,11 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
         onLtr: () => [ Layout.southeast, Layout.southwest, Layout.south ]
       },
       components: [],
-      fetch: ColorSwatch.getFetch(colorInputBackstage.getColors(), colorInputBackstage.hasCustomColors()),
-      columns: colorInputBackstage.getColorCols(),
+      fetch: ColorSwatch.getFetch(backstage.colorinput.getColors(), backstage.colorinput.hasCustomColors()),
+      columns: backstage.colorinput.getColorCols(),
       presets: 'color',
       onItemAction
-    }, sharedBackstage)
+    }, backstage)
   );
 
   return FormField.sketch({

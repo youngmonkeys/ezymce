@@ -1,7 +1,7 @@
 import { ApproxStructure, Assertions, FocusTools, Keyboard, Keys, Mouse, UiFinder, Waiter } from '@ephox/agar';
 import { AlloyComponent, AlloyTriggers, Container, GuiFactory, Invalidating, NativeEvents, Representing, TestHelpers } from '@ephox/alloy';
 import { describe, it } from '@ephox/bedrock-client';
-import { Fun, Optional } from '@ephox/katamari';
+import { Optional } from '@ephox/katamari';
 import { SelectorFind, SugarDocument, Traverse } from '@ephox/sugar';
 import { assert } from 'chai';
 
@@ -24,18 +24,7 @@ describe('phantom.tinymce.themes.silver.components.colorinput.ColorInputTest', (
         renderColorInput({
           name: 'alpha',
           label: Optional.some('test-color-input')
-        }, helpers.shared(), {
-          colorPicker: (_callback, _value) => {},
-          hasCustomColors: Fun.always,
-          getColors: () => [
-            { type: 'choiceitem', text: 'Turquoise', value: '#18BC9B' },
-            { type: 'choiceitem', text: 'Green', value: '#2FCC71' },
-            { type: 'choiceitem', text: 'Blue', value: '#3598DB' },
-            { type: 'choiceitem', text: 'Purple', value: '#9B59B6' },
-            { type: 'choiceitem', text: 'Navy Blue', value: '#34495E' }
-          ],
-          getColorCols: () => 3
-        })
+        }, helpers.backstage())
       ]
     })
   ));

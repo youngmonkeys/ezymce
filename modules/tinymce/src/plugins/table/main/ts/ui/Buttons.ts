@@ -1,3 +1,4 @@
+import { Cell, Fun } from '@ephox/katamari';
 /**
  * Copyright (c) Tiny Technologies, Inc. All rights reserved.
  * Licensed under the LGPL or a commercial license.
@@ -6,7 +7,7 @@
  */
 
 import Editor from 'tinymce/core/api/Editor';
-import { getToolbar } from '../api/Settings';
+import { getTableCellBorderColors, getToolbar } from '../api/Settings';
 import { Clipboard } from '../core/Clipboard';
 import { SelectionTargets, LockedDisable } from '../selection/SelectionTargets';
 
@@ -165,6 +166,44 @@ const addButtons = (editor: Editor, selectionTargets: SelectionTargets, clipboar
     icon: 'table'
   });
 
+  const tableBorder = Cell('#000000');
+  const tableCellBorderColors = getTableCellBorderColors(editor);
+  editor.ui.registry.addSplitButton('tablecellbordercolor', {
+    type: 'splitbutton',
+    icon: 'highlight-bg-color',
+    // icon: 'table-cell-background',
+    fetch: (callback) => {
+      callback([
+        {
+          type: 'fancymenuitem',
+          fancytype: 'colorswatch',
+          initData: {
+            colorselection: tableCellBorderColors.length > 0 ? tableCellBorderColors : undefined
+          },
+          onAction: Fun.noop
+        }
+      ]);
+    },
+    onAction: () => {
+      editor.execCommand('mceTableApplyCellStyle', false, {
+        'border-color': tableBorder.get()
+      });
+    },
+    onItemAction: (splitButtonApi, value) => {
+      tableBorder.set(value);
+
+      editor.execCommand('mceTableApplyCellStyle', false, {
+        'border-color': value
+      });
+
+      splitButtonApi.setIconFill('tox-icon-highlight-bg-color__color', tableBorder.get());
+    },
+    onSetup: (splitButtonApi) => {
+      splitButtonApi.setIconFill('tox-icon-highlight-bg-color__color', tableBorder.get());
+
+      return Fun.noop;
+    },
+  });
 };
 
 const addToolbars = (editor: Editor) => {

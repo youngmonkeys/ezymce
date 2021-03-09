@@ -60,7 +60,7 @@ const factories: Record<string, FormPartRenderer> = {
   iframe: makeIframe((spec, backstage) => renderIFrame(spec, backstage.shared.providers)),
   button: make((spec, backstage) => renderDialogButton(spec, backstage.shared.providers)),
   checkbox: make((spec, backstage) => renderCheckbox(spec, backstage.shared.providers)),
-  colorinput: make((spec, backstage) => renderColorInput(spec, backstage.shared, backstage.colorinput)),
+  colorinput: make((spec, backstage) => renderColorInput(spec, backstage)),
   colorpicker: make(renderColorPicker), // Not sure if this needs name.
   dropzone: make((spec, backstage) => renderDropZone(spec, backstage.shared.providers)),
   grid: make((spec, backstage) => renderGrid(spec, backstage.shared)),

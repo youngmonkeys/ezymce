@@ -106,7 +106,7 @@ describe('phantom.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
               store.adder('onItemAction.3')();
               api.setActive(true);
             }
-          }, helpers.shared())
+          }, helpers.backstage())
         ]
       },
 

@@ -16,7 +16,7 @@ import { Attribute, EventArgs, SelectorFind } from '@ephox/sugar';
 
 import I18n from 'tinymce/core/api/util/I18n';
 import { ToolbarGroupSetting } from 'tinymce/themes/silver/api/Settings';
-import { UiFactoryBackstage, UiFactoryBackstageProviders, UiFactoryBackstageShared } from 'tinymce/themes/silver/backstage/Backstage';
+import { UiFactoryBackstage, UiFactoryBackstageProviders } from 'tinymce/themes/silver/backstage/Backstage';
 import * as ReadOnly from '../../../ReadOnly';
 import { DisablingConfigs } from '../../alien/DisablingConfigs';
 import { detectSize } from '../../alien/FlatgridAutodetect';
@@ -233,7 +233,7 @@ interface ChoiceFetcher {
   select: Optional<(value: string) => boolean>;
 }
 
-const fetchChoices = (getApi, spec: ChoiceFetcher, providersBackstage: UiFactoryBackstageProviders) => (comp: AlloyComponent): Future<Optional<TieredData>> => Future.nu((callback) => spec.fetch(callback)).map((items) => Optional.from(createTieredDataFrom(
+const fetchChoices = (getApi, spec: ChoiceFetcher, backstage: UiFactoryBackstage) => (comp: AlloyComponent): Future<Optional<TieredData>> => Future.nu((callback) => spec.fetch(callback)).map((items) => Optional.from(createTieredDataFrom(
   Merger.deepMerge(
     createPartialChoiceMenu(
       Id.generate('menu-value'),
@@ -245,7 +245,7 @@ const fetchChoices = (getApi, spec: ChoiceFetcher, providersBackstage: UiFactory
       spec.presets,
       ItemResponse.CLOSE_ON_EXECUTE,
       spec.select.getOr(Fun.never),
-      providersBackstage
+      backstage
     ),
     {
       movement: deriveMenuMovement(spec.columns, spec.presets),
@@ -261,7 +261,7 @@ const fetchChoices = (getApi, spec: ChoiceFetcher, providersBackstage: UiFactory
 )));
 
 // TODO: hookup onSetup and onDestroy
-const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: UiFactoryBackstageShared): SketchSpec => {
+const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, backstage: UiFactoryBackstage): SketchSpec => {
   // This is used to change the icon on the button. Normally, affected by the select call.
   const displayChannel = Id.generate('channel-update-split-dropdown-display');
 
@@ -298,7 +298,7 @@ const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: Ui
     dom: {
       tag: 'div',
       classes: [ ToolbarButtonClasses.SplitButton ],
-      attributes: { 'aria-pressed': false, ...getTooltipAttributes(spec.tooltip, sharedBackstage.providers) }
+      attributes: { 'aria-pressed': false, ...getTooltipAttributes(spec.tooltip, backstage.shared.providers) }
     },
 
     onExecute: (button: AlloyComponent) => {
@@ -308,7 +308,7 @@ const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: Ui
     onItemExecute: (_a, _b, _c) => { },
 
     splitDropdownBehaviours: Behaviour.derive([
-      DisablingConfigs.splitButton(sharedBackstage.providers.isDisabled),
+      DisablingConfigs.splitButton(backstage.shared.providers.isDisabled),
       ReadOnly.receivingConfig(),
       AddEventsBehaviour.config('split-dropdown-events', [
         AlloyEvents.run(focusButtonEvent, Focusing.focus),
@@ -323,8 +323,8 @@ const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: Ui
     },
 
     toggleClass: ToolbarButtonClasses.Ticked,
-    lazySink: sharedBackstage.getSink,
-    fetch: fetchChoices(getApi, spec, sharedBackstage.providers),
+    lazySink: backstage.shared.getSink,
+    fetch: fetchChoices(getApi, spec, backstage),
 
     parts: {
       // FIX: hasIcons
@@ -335,21 +335,21 @@ const renderSplitButton = (spec: Toolbar.ToolbarSplitButton, sharedBackstage: Ui
       AlloySplitDropdown.parts.button(
         renderCommonStructure(spec.icon, spec.text, Optional.none(), Optional.some(displayChannel), Optional.some([
           Toggling.config({ toggleClass: ToolbarButtonClasses.Ticked, toggleOnExecute: false })
-        ]), sharedBackstage.providers)
+        ]), backstage.shared.providers)
       ),
       AlloySplitDropdown.parts.arrow({
         dom: {
           tag: 'button',
           classes: [ ToolbarButtonClasses.Button, 'tox-split-button__chevron' ],
-          innerHtml: Icons.get('chevron-down', sharedBackstage.providers.icons)
+          innerHtml: Icons.get('chevron-down', backstage.shared.providers.icons)
         },
         buttonBehaviours: Behaviour.derive([
-          DisablingConfigs.splitButton(sharedBackstage.providers.isDisabled),
+          DisablingConfigs.splitButton(backstage.shared.providers.isDisabled),
           ReadOnly.receivingConfig()
         ])
       }),
       AlloySplitDropdown.parts['aria-descriptor']({
-        text: sharedBackstage.providers.translate('To open the popup, press Shift+Enter')
+        text: backstage.shared.providers.translate('To open the popup, press Shift+Enter')
       })
     ]
   });

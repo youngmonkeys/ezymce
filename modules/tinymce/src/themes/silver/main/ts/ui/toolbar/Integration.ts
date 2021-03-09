@@ -96,7 +96,7 @@ const types = {
     Toolbar.createSplitButton,
     (s: Toolbar.ToolbarSplitButton, extras) => renderSplitButton(
       s,
-      extras.backstage.shared
+      extras.backstage
     )
   ),
 

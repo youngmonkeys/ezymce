@@ -5,7 +5,7 @@
  * For commercial licenses see https://www.tiny.cloud/
  */
 
-import { Arr } from '@ephox/katamari';
+import { Arr, Type } from '@ephox/katamari';
 import Editor from 'tinymce/core/api/Editor';
 import { Menu } from 'tinymce/core/api/ui/Ui';
 import ColorCache from './ColorCache';
@@ -89,11 +89,9 @@ const getColorCols = (editor: Editor, defaultCols: number): number => editor.get
 
 const hasCustomColors = (editor: Editor): boolean => editor.getParam('custom_colors') !== false;
 
-const getColorMap = (editor: Editor): string[] => editor.getParam('color_map');
-
 const getColors = (editor: Editor): Menu.ChoiceMenuItemSpec[] => {
-  const unmapped = getColorMap(editor);
-  return unmapped !== undefined ? mapColors(unmapped) : defaultColors;
+  const unmapped = editor.getParam('color_map');
+  return Type.isNonNullable(unmapped) ? mapColors(unmapped) : defaultColors;
 };
 
 const getCurrentColors = (): Menu.ChoiceMenuItemSpec[] => Arr.map(colorCache.state(), (color) => ({
@@ -110,7 +108,6 @@ export {
   mapColors,
   getColorCols,
   hasCustomColors,
-  getColorMap,
   getColors,
   getCurrentColors,
   addColor

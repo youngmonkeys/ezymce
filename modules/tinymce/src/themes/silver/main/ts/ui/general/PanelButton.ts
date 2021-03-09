@@ -11,7 +11,7 @@ import {
 import { Toolbar } from '@ephox/bridge';
 import { Fun, Future, Id, Merger, Optional } from '@ephox/katamari';
 
-import { UiFactoryBackstageShared } from '../../backstage/Backstage';
+import { UiFactoryBackstage } from '../../backstage/Backstage';
 import * as ReadOnly from '../../ReadOnly';
 import { DisablingConfigs } from '../alien/DisablingConfigs';
 import ItemResponse from '../menus/item/ItemResponse';
@@ -31,14 +31,14 @@ export interface SwatchPanelButtonSpec {
   layouts?: Layouts;
 }
 
-export const renderPanelButton = (spec: SwatchPanelButtonSpec, sharedBackstage: UiFactoryBackstageShared): SketchSpec => AlloyDropdown.sketch({
+export const renderPanelButton = (spec: SwatchPanelButtonSpec, backstage: UiFactoryBackstage): SketchSpec => AlloyDropdown.sketch({
   dom: spec.dom,
   components: spec.components,
 
   toggleClass: 'mce-active',
 
   dropdownBehaviours: Behaviour.derive([
-    DisablingConfigs.button(sharedBackstage.providers.isDisabled),
+    DisablingConfigs.button(backstage.shared.providers.isDisabled),
     ReadOnly.receivingConfig(),
     Unselecting.config({}),
     Tabstopping.config({})
@@ -46,7 +46,7 @@ export const renderPanelButton = (spec: SwatchPanelButtonSpec, sharedBackstage: 
   layouts: spec.layouts,
   sandboxClasses: [ 'tox-dialog__popups' ],
 
-  lazySink: sharedBackstage.getSink,
+  lazySink: backstage.shared.getSink,
   fetch: (comp) => Future.nu((callback) => spec.fetch(callback)).map((items) => Optional.from(createTieredDataFrom(
     Merger.deepMerge(
       createPartialChoiceMenu(
@@ -60,7 +60,7 @@ export const renderPanelButton = (spec: SwatchPanelButtonSpec, sharedBackstage: 
         ItemResponse.CLOSE_ON_EXECUTE,
         // No colour is ever selected on opening
         Fun.never,
-        sharedBackstage.providers
+        backstage
       ),
       {
         movement: deriveMenuMovement(spec.columns, spec.presets)

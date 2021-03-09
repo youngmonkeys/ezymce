@@ -183,7 +183,7 @@ export default () => {
   const colorInputSpec = renderColorInput({
     name: 'colorinput-demo',
     label: Optional.some('Color input label')
-  }, sharedBackstage, backstage.colorinput);
+  }, backstage);
 
   const colorPickerSpec = renderColorPicker({
     name: 'colorpicker-demo',

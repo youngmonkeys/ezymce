@@ -1,10 +1,10 @@
 import { FieldSchema, ValueSchema } from '@ephox/boulder';
 import { Fun, Optional, Result } from '@ephox/katamari';
 
-import { ChoiceMenuItemSpec, SeparatorMenuItemSpec } from '../../api/Menu';
+import { ChoiceMenuItemSpec, FancyMenuItem, SeparatorMenuItemSpec } from '../../api/Menu';
 
 // Temporarily disable separators until things are clearer
-export type ToolbarSplitButtonItemTypes = ChoiceMenuItemSpec | SeparatorMenuItemSpec;
+export type ToolbarSplitButtonItemTypes = ChoiceMenuItemSpec | FancyMenuItem | SeparatorMenuItemSpec;
 export type SuccessCallback = (menu: ToolbarSplitButtonItemTypes[]) => void;
 export type SelectPredicate = (value: string) => boolean;
 

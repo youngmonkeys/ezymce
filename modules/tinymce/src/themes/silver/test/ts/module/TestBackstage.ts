@@ -46,6 +46,18 @@ export default (sink?: AlloyComponent): UiFactoryBackstage => {
     },
     dialog: {
       isDraggableModal: Fun.never
+    },
+    colorinput: {
+      colorPicker: (_callback, _value) => {},
+      hasCustomColors: Fun.always,
+      getColors: () => [
+        { type: 'choiceitem', text: 'Turquoise', value: '#18BC9B' },
+        { type: 'choiceitem', text: 'Green', value: '#2FCC71' },
+        { type: 'choiceitem', text: 'Blue', value: '#3598DB' },
+        { type: 'choiceitem', text: 'Purple', value: '#9B59B6' },
+        { type: 'choiceitem', text: 'Navy Blue', value: '#34495E' }
+      ],
+      getColorCols: () => 3
     }
   };
 };
