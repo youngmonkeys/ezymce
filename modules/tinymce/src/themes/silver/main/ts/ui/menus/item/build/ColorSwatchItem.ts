@@ -7,7 +7,7 @@
 
 import { ItemTypes, ItemWidget, Menu as AlloyMenu, MenuTypes } from '@ephox/alloy';
 import { Menu } from '@ephox/bridge';
-import { Fun, Id, Type } from '@ephox/katamari';
+import { Fun, Id, Optional, Type } from '@ephox/katamari';
 
 import { UiFactoryBackstage } from 'tinymce/themes/silver/backstage/Backstage';
 import * as ColorSwatch from 'tinymce/themes/silver/ui/core/color/ColorSwatch';
@@ -16,7 +16,9 @@ import { deriveMenuMovement } from '../../menu/MenuMovement';
 import * as MenuParts from '../../menu/MenuParts';
 import ItemResponse from '../ItemResponse';
 
-export const renderColorSwatchItem = (spec: Menu.FancyMenuItem, backstage: UiFactoryBackstage): ItemTypes.WidgetItemSpec => {
+type RenderFancyMenuItem = (spec: Menu.FancyMenuItem, backstage: UiFactoryBackstage) => Optional<ItemTypes.WidgetItemSpec>;
+
+export const renderColorSwatchItem = (spec: Menu.FancyMenuItem, backstage: UiFactoryBackstage, fancy: RenderFancyMenuItem): ItemTypes.WidgetItemSpec => {
   const items = getcolorItems(spec, backstage);
   const columns = backstage.colorinput.getColorCols();
   const presets = 'color';
@@ -31,7 +33,8 @@ export const renderColorSwatchItem = (spec: Menu.FancyMenuItem, backstage: UiFac
     presets,
     ItemResponse.CLOSE_ON_EXECUTE,
     Fun.never,
-    backstage
+    backstage,
+    fancy
   );
 
   const widgetSpec: MenuTypes.MenuSpec = {

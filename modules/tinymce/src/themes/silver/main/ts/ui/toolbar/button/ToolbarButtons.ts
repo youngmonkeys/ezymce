@@ -27,6 +27,7 @@ import * as Icons from '../../icons/Icons';
 import { componentRenderPipeline } from '../../menus/item/build/CommonMenuItem';
 import { classForPreset } from '../../menus/item/ItemClasses';
 import ItemResponse from '../../menus/item/ItemResponse';
+import { fancy } from '../../menus/item/MenuItems';
 import { createPartialChoiceMenu } from '../../menus/menu/MenuChoice';
 import { deriveMenuMovement } from '../../menus/menu/MenuMovement';
 import * as MenuParts from '../../menus/menu/MenuParts';
@@ -245,7 +246,8 @@ const fetchChoices = (getApi, spec: ChoiceFetcher, backstage: UiFactoryBackstage
       spec.presets,
       ItemResponse.CLOSE_ON_EXECUTE,
       spec.select.getOr(Fun.never),
-      backstage
+      backstage,
+      fancy
     ),
     {
       movement: deriveMenuMovement(spec.columns, spec.presets),

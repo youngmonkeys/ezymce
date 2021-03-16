@@ -14,7 +14,9 @@ import { renderInsertTableMenuItem } from './InsertTableMenuItem';
 
 const fancyMenuItems: Record<keyof Menu.FancyActionArgsMap, (mi: Menu.FancyMenuItem, bs: UiFactoryBackstage) => ItemTypes.WidgetItemSpec> = {
   inserttable: renderInsertTableMenuItem,
-  colorswatch: renderColorSwatchItem
+  colorswatch: (spec: Menu.FancyMenuItem, backstage: UiFactoryBackstage) => {
+    return renderColorSwatchItem(spec, backstage, renderFancyMenuItem);
+  }
 };
 
 const valueOpt = <T>(obj: Record<string, T>, key): Optional<T> => Object.prototype.hasOwnProperty.call(obj, key)

@@ -1,3 +1,4 @@
+import { ItemTypes } from '@ephox/alloy';
 /**
  * Copyright (c) Tiny Technologies, Inc. All rights reserved.
  * Licensed under the LGPL or a commercial license.
@@ -5,17 +6,18 @@
  * For commercial licenses see https://www.tiny.cloud/
  */
 
-import { Menu as BridgeMenu, Toolbar } from '@ephox/bridge';
+import { Menu as BridgeMenu, Menu, Toolbar } from '@ephox/bridge';
 import { Arr, Optional, Optionals } from '@ephox/katamari';
 
 import { UiFactoryBackstage } from 'tinymce/themes/silver/backstage/Backstage';
 import { renderChoiceItem } from '../item/build/ChoiceItem';
 import ItemResponse from '../item/ItemResponse';
-import * as MenuItems from '../item/MenuItems';
 import * as MenuUtils from './MenuUtils';
 import { SingleMenuItemSpec } from './SingleMenuTypes';
 
 type PartialMenuSpec = MenuUtils.PartialMenuSpec;
+
+type RenderFancyMenuItem = (spec: Menu.FancyMenuItem, backstage: UiFactoryBackstage) => Optional<ItemTypes.WidgetItemSpec>;
 
 export const createPartialChoiceMenu = (
   value: string,
@@ -25,11 +27,12 @@ export const createPartialChoiceMenu = (
   presets: Toolbar.PresetTypes,
   itemResponse: ItemResponse,
   select: (value: string) => boolean,
-  backstage: UiFactoryBackstage
+  backstage: UiFactoryBackstage,
+  fancy: RenderFancyMenuItem
 ): PartialMenuSpec => {
   const hasIcons = MenuUtils.menuHasIcons(items);
   const presetItemTypes = presets === 'color' ? 'color' : 'normal';
-  const alloyItems = createChoiceItems(items, onItemValueHandler, columns, presetItemTypes, itemResponse, select, backstage);
+  const alloyItems = createChoiceItems(items, onItemValueHandler, columns, presetItemTypes, itemResponse, select, backstage, fancy);
   return MenuUtils.createPartialMenuWithAlloyItems(value, hasIcons, alloyItems, columns, presets);
 };
 
@@ -40,7 +43,8 @@ export const createChoiceItems = (
   itemPresets: Toolbar.PresetItemTypes,
   itemResponse: ItemResponse,
   select: (value: string) => boolean,
-  backstage: UiFactoryBackstage
+  backstage: UiFactoryBackstage,
+  fancy: RenderFancyMenuItem
 ) => Optionals.cat(
   Arr.map(items, (item) => {
     switch (item.type) {
@@ -69,7 +73,7 @@ export const createChoiceItems = (
 
         return BridgeMenu.createFancyMenuItem(item).fold(
           MenuUtils.handleError,
-          (d) => MenuItems.fancy(d, backstage)
+          (d) => fancy(d, backstage)
         );
       }
       default:
