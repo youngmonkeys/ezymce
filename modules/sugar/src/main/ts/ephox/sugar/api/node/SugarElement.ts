@@ -4,7 +4,11 @@ interface SugarElement<T = any> {
   readonly dom: T;
 }
 
-const fromHtml = <E extends Node = Node & ChildNode> (html: string, scope?: Document | null): SugarElement<E> => {
+export interface NodeAndChildNode extends Node, ChildNode {}
+
+export interface NodeAndParentNode extends Node, ParentNode {}
+
+const fromHtml = <E extends Node = NodeAndChildNode> (html: string, scope?: Document | null): SugarElement<E> => {
   const doc = scope || document;
   const div = doc.createElement('div');
   div.innerHTML = html;

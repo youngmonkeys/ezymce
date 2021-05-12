@@ -195,29 +195,10 @@ const widgetItem = (itemSpec: DemoWidgetItem): WidgetItemSpec => {
   };
 };
 
-const gridMenu = (menuSpec: DemoMenu & { columns: number; rows: number }): PartialMenuSpec => {
-  const spec = ValueSchema.asRawOrDie('DemoRenders.gridMenu', demoGridMenu, menuSpec);
-  return {
-    movement: {
-      mode: 'grid',
-      initSize: {
-        numColumns: spec.columns,
-        numRows: spec.rows
-      }
-    },
-    dom: {
-      tag: 'div',
-      classes: [ 'demo-alloy-menu' ],
-      styles: {
-        width: '100px'
-      }
-    },
-    components: [
-      Menu.parts.items({ })
-    ],
-    items: spec.items
-  };
-};
+export interface GridmenuSpec extends DemoMenu {
+  columns: number;
+  rows: number;
+}
 
 const menu = (menuSpec: DemoMenu): PartialMenuSpec => {
   const spec = ValueSchema.asRawOrDie('DemoRenders.menu', demoMenu, menuSpec);
@@ -319,4 +300,28 @@ export {
 
   tieredMarkers,
   orbMarkers
+};
+
+const gridMenu = (menuSpec: GridmenuSpec): PartialMenuSpec => {
+  const spec = ValueSchema.asRawOrDie('DemoRenders.gridMenu', demoGridMenu, menuSpec);
+  return {
+    movement: {
+      mode: 'grid',
+      initSize: {
+        numColumns: spec.columns,
+        numRows: spec.rows
+      }
+    },
+    dom: {
+      tag: 'div',
+      classes: [ 'demo-alloy-menu' ],
+      styles: {
+        width: '100px'
+      }
+    },
+    components: [
+      Menu.parts.items({ })
+    ],
+    items: spec.items
+  };
 };

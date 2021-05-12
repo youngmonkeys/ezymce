@@ -862,7 +862,7 @@ class Editor implements EditorObservable {
    * // Get content of a specific editor:
    * tinymce.get('content id').getContent()
    */
-  public getContent(args: { format: 'tree' } & EditorContent.GetContentArgs): AstNode;
+  public getContent(args: EditorContent.GetContentTreeArgs): AstNode;
   public getContent(args?: EditorContent.GetContentArgs): string;
   public getContent(args?: EditorContent.GetContentArgs): EditorContent.Content {
     return EditorContent.getContent(this, args);

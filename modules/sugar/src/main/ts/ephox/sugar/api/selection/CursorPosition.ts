@@ -1,5 +1,5 @@
 import { Optional } from '@ephox/katamari';
-import { SugarElement } from '../node/SugarElement';
+import { NodeAndChildNode, SugarElement } from '../node/SugarElement';
 import * as PredicateFind from '../search/PredicateFind';
 import * as Traverse from '../search/Traverse';
 import * as Awareness from './Awareness';
@@ -13,9 +13,9 @@ const last = (element: SugarElement<Node>): Optional<SugarElement<ChildNode>> =>
 // Note, sugar probably needs some RTL traversals.
 const descendantRtl: {
   <T extends Node = Node>(scope: SugarElement<Node>, predicate: (e: SugarElement<Node>) => e is SugarElement<T>): Optional<SugarElement<T & ChildNode>>;
-  (scope: SugarElement<Node>, predicate: (e: SugarElement<Node>) => boolean): Optional<SugarElement<Node & ChildNode>>;
-} = (scope: SugarElement<Node>, predicate: (e: SugarElement<Node>) => boolean): Optional<SugarElement<Node & ChildNode>> => {
-  const descend = (element: SugarElement<Node>): Optional<SugarElement<Node & ChildNode>> => {
+  (scope: SugarElement<Node>, predicate: (e: SugarElement<Node>) => boolean): Optional<SugarElement<NodeAndChildNode>>;
+} = (scope: SugarElement<Node>, predicate: (e: SugarElement<Node>) => boolean): Optional<SugarElement<NodeAndChildNode>> => {
+  const descend = (element: SugarElement<Node>): Optional<SugarElement<NodeAndChildNode>> => {
     const children = Traverse.children(element);
     for (let i = children.length - 1; i >= 0; i--) {
       const child = children[i];
@@ -28,7 +28,7 @@ const descendantRtl: {
       }
     }
 
-    return Optional.none<SugarElement<Node & ChildNode>>();
+    return Optional.none<SugarElement<NodeAndChildNode>>();
   };
 
   return descend(scope);

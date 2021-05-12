@@ -77,11 +77,11 @@ export interface TieredMenuSpec extends SingleSketchSpec {
   };
 }
 
-export type PartialMenuSpec = Partial<MenuSpec> & {
+export interface PartialMenuSpec extends Partial<MenuSpec> {
   dom: MenuSpec['dom'];
   components: MenuSpec['components'];
   items: MenuSpec['items'];
-};
+}
 
 export type TieredMenuRecord = Record<string, PartialMenuSpec>;
 

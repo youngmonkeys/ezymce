@@ -1,6 +1,6 @@
 import { Arr, Fun, Optional } from '@ephox/katamari';
 import * as Compare from '../dom/Compare';
-import { SugarElement } from '../node/SugarElement';
+import { NodeAndParentNode, SugarElement } from '../node/SugarElement';
 import * as PredicateFind from './PredicateFind';
 import * as SelectorFilter from './SelectorFilter';
 import * as SelectorFind from './SelectorFind';
@@ -38,7 +38,7 @@ const childOf = (element: SugarElement<Node>, ancestor: SugarElement<Node>): Opt
   PredicateFind.closest(element, (elem) =>
     Traverse.parent(elem).exists((parent) => Compare.eq(parent, ancestor)));
 
-const indexInParent = <E extends Node> (element: SugarElement<E>): Optional<AddressInParent<Node & ParentNode, ChildNode, E>> =>
+const indexInParent = <E extends Node> (element: SugarElement<E>): Optional<AddressInParent<NodeAndParentNode, ChildNode, E>> =>
   Traverse.parent(element).bind((parent) => {
     const children = Traverse.children(parent);
     return indexOf(children, element).map((index) => inParent(parent, children, element, index));
@@ -47,7 +47,7 @@ const indexInParent = <E extends Node> (element: SugarElement<E>): Optional<Addr
 const indexOf = (elements: SugarElement<Node>[], element: SugarElement<Node>): Optional<number> =>
   Arr.findIndex(elements, Fun.curry(Compare.eq, element));
 
-const selectorsInParent = <E extends Node, S extends Element = Element> (element: SugarElement<E>, selector: string): Optional<AddressInParent<Node & ParentNode, S, E>> =>
+const selectorsInParent = <E extends Node, S extends Element = Element> (element: SugarElement<E>, selector: string): Optional<AddressInParent<NodeAndParentNode, S, E>> =>
   Traverse.parent(element).bind((parent) => {
     const children = SelectorFilter.children<S>(parent, selector);
     return indexOf(children, element).map((index) => inParent(parent, children, element, index));

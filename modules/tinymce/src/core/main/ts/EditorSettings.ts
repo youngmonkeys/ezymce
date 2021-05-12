@@ -174,7 +174,11 @@ const getPlatformPlugins = (isMobileDevice: boolean, sectionResult: SectionResul
   }
 };
 
-const processPlugins = (isMobileDevice: boolean, sectionResult: SectionResult, defaultOverrideSettings: RawEditorSettings, settings: RawEditorSettings & { external_plugins: Record<string, string> }): EditorSettings => {
+interface EditorSettingsWithExternalPlugins extends RawEditorSettings {
+  external_plugins: Record<string, string>
+}
+
+const processPlugins = (isMobileDevice: boolean, sectionResult: SectionResult, defaultOverrideSettings: RawEditorSettings, settings: EditorSettingsWithExternalPlugins): EditorSettings => {
   const forcedPlugins = normalizePlugins(defaultOverrideSettings.forced_plugins);
   const desktopPlugins = normalizePlugins(settings.plugins);
 

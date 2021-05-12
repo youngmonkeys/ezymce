@@ -249,7 +249,11 @@ const promise = <T>(): PromisePolyfillConstructor => {
   return Promise;
 };
 
-declare const window: Window & { Promise: PromiseConstructor };
+export interface WindowWithPromise extends Window {
+  Promise: PromiseConstructor;
+}
+
+declare const window: WindowWithPromise;
 
 const Promise: PromiseConstructor = window.Promise ? window.Promise : promise();
 

@@ -1,7 +1,7 @@
 import { Arr, Fun, Optional, Type } from '@ephox/katamari';
 import * as Recurse from '../../alien/Recurse';
 import * as Compare from '../dom/Compare';
-import { SugarElement } from '../node/SugarElement';
+import { NodeAndParentNode, SugarElement } from '../node/SugarElement';
 import * as SugarNode from '../node/SugarNode';
 
 /**
@@ -28,7 +28,7 @@ const documentElement = (element: SugarElement<Node>): SugarElement<HTMLElement>
 const defaultView = (element: SugarElement<Node>): SugarElement<Window> =>
   SugarElement.fromDom(documentOrOwner(element).dom.defaultView as Window);
 
-const parent = (element: SugarElement<Node>): Optional<SugarElement<Node & ParentNode>> =>
+const parent = (element: SugarElement<Node>): Optional<SugarElement<NodeAndParentNode>> =>
   Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
 
 // Cast down to just be SugarElement<Node>

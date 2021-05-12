@@ -15,7 +15,8 @@ const assertOnBool = (c: boolean, label: TestLabel, value: any): void => {
   );
 };
 
-export type CombinedAssert = StringAssert & ArrayAssert;
+export interface CombinedAssert extends StringAssert, ArrayAssert {
+}
 
 const is = (target: string): CombinedAssert => {
   const compare = (actual: string) => target === actual;

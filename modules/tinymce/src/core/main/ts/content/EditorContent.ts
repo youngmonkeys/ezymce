@@ -5,13 +5,14 @@
  * For commercial licenses see https://www.tiny.cloud/
  */
 
-import { Content, GetContentArgs, SetContentArgs } from './ContentTypes';
+import { Content, GetContentArgs, GetContentTreeArgs, SetContentArgs } from './ContentTypes';
 import { getContent } from './GetContent';
 import { setContent } from './SetContent';
 
 export {
   Content,
   GetContentArgs,
+  GetContentTreeArgs,
   SetContentArgs,
   setContent,
   getContent

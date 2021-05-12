@@ -4,11 +4,7 @@ import { Attribute, Classes, Css, SugarElement, SugarNode, Traverse } from '@eph
 import * as ApproxComparisons from '../assertions/ApproxComparisons';
 import * as ApproxStructures from '../assertions/ApproxStructures';
 
-type StringAssert = ApproxStructures.StringAssert;
-type ArrayAssert = ApproxStructures.ArrayAssert;
 type StructAssert = ApproxStructures.StructAssert;
-type StructAssertBasic = ApproxStructures.StructAssertBasic;
-type StructAssertAdv = ApproxStructures.StructAssertAdv;
 type CombinedAssert = ApproxComparisons.CombinedAssert;
 
 export type ArrayApi = typeof arrApi;
@@ -50,7 +46,7 @@ const getAttrsExcept = (node: SugarElement<any>, exclude: string[]): Record<stri
 const toAssertableObj = (obj: Record<string, string>): Record<string, CombinedAssert> =>
   Obj.map(obj, ApproxComparisons.is);
 
-const toAssertableArr = (arr: string[]): (StringAssert & ArrayAssert)[] =>
+const toAssertableArr = (arr: string[]): CombinedAssert[] =>
   Arr.map(arr, ApproxComparisons.has);
 
 const fromElement = (node: SugarElement<any>): StructAssert => {
@@ -66,7 +62,7 @@ const fromElement = (node: SugarElement<any>): StructAssert => {
   }
 };
 
-const fromHtml = (html: string): StructAssertBasic | StructAssertAdv =>
+const fromHtml = (html: string): StructAssert =>
   fromElement(SugarElement.fromHtml(html));
 
 export {

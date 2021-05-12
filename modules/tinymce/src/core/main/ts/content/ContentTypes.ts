@@ -19,6 +19,10 @@ export interface GetContentArgs {
   [key: string]: any;
 }
 
+export interface GetContentTreeArgs extends GetContentArgs {
+  format: 'tree'
+}
+
 export interface SetContentArgs {
   format?: string;
   set?: boolean;
