@@ -3,6 +3,7 @@ import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { SugarBody, SugarElement } from '@ephox/sugar';
 import { TinyApis, TinyLoader, TinyUi } from '@ephox/wrap-mcagar';
 
+import DomModel from 'tinymce/models/dom/Model';
 import SpellcheckerPlugin from 'tinymce/plugins/spellchecker/Plugin';
 import SilverTheme from 'tinymce/themes/silver/Theme';
 
@@ -10,6 +11,7 @@ UnitTest.asynctest('browser.tinymce.plugins.spellchecker.AddToDictionaryTest', (
 
   SpellcheckerPlugin();
   SilverTheme();
+  DomModel();
 
   const dict = [];
 

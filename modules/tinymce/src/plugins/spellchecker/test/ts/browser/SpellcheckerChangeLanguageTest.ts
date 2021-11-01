@@ -2,6 +2,7 @@ import { Log, Pipeline, Step } from '@ephox/agar';
 import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { TinyLoader, TinyUi } from '@ephox/wrap-mcagar';
 
+import DomModel from 'tinymce/models/dom/Model';
 import SpellcheckerPlugin from 'tinymce/plugins/spellchecker/Plugin';
 import SilverTheme from 'tinymce/themes/silver/Theme';
 
@@ -9,6 +10,7 @@ UnitTest.asynctest('browser.tinymce.plugins.spellchecker.SpellcheckerChangeLangu
 
   SpellcheckerPlugin();
   SilverTheme();
+  DomModel();
 
   TinyLoader.setup((editor, onSuccess, onFailure) => {
     const ui = TinyUi(editor);

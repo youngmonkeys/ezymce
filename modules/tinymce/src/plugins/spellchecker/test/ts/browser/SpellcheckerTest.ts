@@ -2,14 +2,16 @@ import { Log, Pipeline, Step } from '@ephox/agar';
 import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { TinyLoader, TinyUi } from '@ephox/wrap-mcagar';
 
+import DomModel from 'tinymce/models/dom/Model';
 import * as Settings from 'tinymce/plugins/spellchecker/api/Settings';
 import SpellcheckerPlugin from 'tinymce/plugins/spellchecker/Plugin';
 import SilverTheme from 'tinymce/themes/silver/Theme';
 
 UnitTest.asynctest('browser.tinymce.plugins.spellchecker.SpellcheckerTest', (success, failure) => {
 
-  SilverTheme();
   SpellcheckerPlugin();
+  SilverTheme();
+  DomModel();
 
   const sTestDefaultLanguage = (editor) => {
     return Step.sync(() => {
