@@ -18,7 +18,7 @@ import * as HomeEndKeys from './HomeEndKeys';
 import * as InputKeys from './InputKeys';
 import * as PageUpDownKeys from './PageUpDownKeys';
 import * as SpaceKey from './SpaceKey';
-// import * as TabKey from './TabKey';
+import * as TabKey from './TabKey';
 
 const setup = (editor: Editor): Cell<Text> => {
   editor.addShortcut('Meta+P', '', 'mcePrint');
@@ -34,7 +34,7 @@ const setup = (editor: Editor): Cell<Text> => {
     EnterKey.setup(editor);
     SpaceKey.setup(editor);
     InputKeys.setup(editor);
-    // TabKey.setup(editor);
+    TabKey.setup(editor);
     HomeEndKeys.setup(editor, caret);
     PageUpDownKeys.setup(editor, caret);
 
