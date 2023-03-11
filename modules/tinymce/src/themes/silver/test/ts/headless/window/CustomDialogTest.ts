@@ -1,4 +1,4 @@
-import { FocusTools, Keyboard, Keys, Mouse, UiFinder, Waiter } from '@ephox/agar';
+import { FocusTools, Keyboard, Keys, Mouse, TestStore, UiFinder, Waiter } from '@ephox/agar';
 import { TestHelpers } from '@ephox/alloy';
 import { before, describe, it } from '@ephox/bedrock-client';
 import { Arr, Fun } from '@ephox/katamari';
@@ -13,11 +13,11 @@ import * as TestExtras from '../../module/TestExtras';
 const GuiSetup = TestHelpers.GuiSetup;
 
 describe('headless.tinymce.themes.silver.window.CustomDialogTest', () => {
-  const store = TestHelpers.TestStore();
-  const helpers = TestExtras.bddSetup();
+  const store = TestStore();
+  const extrasHook = TestExtras.bddSetup();
   let windowManager: WindowManagerImpl;
   before(() => {
-    windowManager = WindowManager.setup(helpers.extras());
+    windowManager = WindowManager.setup(extrasHook.access().extras);
   });
 
   GuiSetup.bddAddStyles(SugarDocument.getDocument(), [
@@ -47,7 +47,7 @@ describe('headless.tinymce.themes.silver.window.CustomDialogTest', () => {
 
   const selectors = {
     field1: 'input', // nothing more useful, because it does not have a label
-    field2: 'label:contains("F2") + textarea',
+    field2: 'label:contains("F2") + .tox-textarea-wrap textarea',
     field3: 'label:contains("F3") + .tox-form__controls-h-stack input',
     field4_a: '.tox-collection__item:contains("a")',
     field4_b: '.tox-collection__item:contains("b")',
@@ -119,7 +119,7 @@ describe('headless.tinymce.themes.silver.window.CustomDialogTest', () => {
         {
           type: 'custom',
           text: 'go',
-          disabled: true
+          enabled: false,
         },
         {
           type: 'cancel',

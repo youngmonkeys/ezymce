@@ -1,6 +1,6 @@
 import { after, before, describe, it } from '@ephox/bedrock-client';
 import { Fun } from '@ephox/katamari';
-import { Attribute, Html, SelectorFilter, SelectorFind, SugarElement, SugarNode, Traverse } from '@ephox/sugar';
+import { Attribute, ContentEditable, Html, Insert, SelectorFilter, SelectorFind, SugarElement, SugarNode, Traverse } from '@ephox/sugar';
 import { assert } from 'chai';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
@@ -25,6 +25,7 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
       dom: DOMUtils(document)
     };
     fakeCaret = FakeCaret(mockEditor, getRoot().dom, isBlock, Fun.always);
+    viewBlock.get().contentEditable = 'true';
   });
 
   after(() => {
@@ -38,7 +39,7 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
   it('show/hide (before, block)', () => {
     Html.set(getRoot(), '<div>a</div>');
 
-    const rng = fakeCaret.show(true, SelectorFind.descendant(getRoot(), 'div').getOrDie().dom);
+    const rng = fakeCaret.show(true, SelectorFind.descendant(getRoot(), 'div').getOrDie().dom) as Range;
     const fakeCaretElm = Traverse.children(getRoot())[0] as SugarElement<HTMLElement>;
 
     assert.equal(SugarNode.name(fakeCaretElm), 'p');
@@ -52,7 +53,7 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
   it('show/hide (after, block)', () => {
     Html.set(getRoot(), '<div>a</div>');
 
-    const rng = fakeCaret.show(false, SelectorFind.descendant(getRoot(), 'div').getOrDie().dom);
+    const rng = fakeCaret.show(false, SelectorFind.descendant(getRoot(), 'div').getOrDie().dom) as Range;
     const fakeCaretElm = Traverse.children(getRoot())[1] as SugarElement<HTMLElement>;
 
     assert.equal(SugarNode.name(fakeCaretElm), 'p');
@@ -66,7 +67,7 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
   it('show/hide (before, inline)', () => {
     Html.set(getRoot(), '<span>a</span>');
 
-    const rng = fakeCaret.show(true, SelectorFind.descendant(getRoot(), 'span').getOrDie().dom);
+    const rng = fakeCaret.show(true, SelectorFind.descendant(getRoot(), 'span').getOrDie().dom) as Range;
     const fakeCaretText = Traverse.children(getRoot());
 
     assert.equal(SugarNode.name(fakeCaretText[0]), '#text');
@@ -80,7 +81,7 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
   it('show/hide (after, inline)', () => {
     Html.set(getRoot(), '<span>a</span>');
 
-    const rng = fakeCaret.show(false, SelectorFind.descendant(getRoot(), 'span').getOrDie().dom);
+    const rng = fakeCaret.show(false, SelectorFind.descendant(getRoot(), 'span').getOrDie().dom) as Range;
     const fakeCaretText = Traverse.children(getRoot());
 
     assert.equal(SugarNode.name(fakeCaretText[1]), '#text');
@@ -108,8 +109,17 @@ describe('browser.tinymce.core.caret.FakeCaretTest', () => {
   });
 
   it('isFakeCaretTarget', () => {
-    assert.isFalse(isFakeCaretTarget(SugarElement.fromHtml('<p></p>').dom), 'Should not need a fake caret');
-    assert.isTrue(isFakeCaretTarget(SugarElement.fromHtml('<p contenteditable="false"></p>').dom), 'Should always need a fake caret');
-    assert.equal(isFakeCaretTarget(SugarElement.fromHtml('<table></table>').dom), isFakeCaretTableBrowser(), 'Should on some browsers need a fake caret');
+    const createElement = (html: string, contentEditable: boolean = true) => {
+      const parent = SugarElement.fromTag('div');
+      const inner = SugarElement.fromHtml(html);
+      Insert.append(parent, inner);
+      ContentEditable.set(parent, contentEditable);
+      return inner;
+    };
+
+    assert.isFalse(isFakeCaretTarget(createElement('<p></p>').dom), 'Should not need a fake caret');
+    assert.isTrue(isFakeCaretTarget(createElement('<p contenteditable="false"></p>').dom), 'Should always need a fake caret');
+    assert.isFalse(isFakeCaretTarget(createElement('<p contenteditable="false"></p>', false).dom), 'Should not have fake caret since context is noneditable');
+    assert.equal(isFakeCaretTarget(createElement('<table></table>').dom), isFakeCaretTableBrowser(), 'Should on some browsers need a fake caret');
   });
 });

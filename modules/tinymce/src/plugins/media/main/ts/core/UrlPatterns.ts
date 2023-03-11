@@ -1,9 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Type } from '@ephox/katamari';
 
 import Tools from 'tinymce/core/api/util/Tools';
 
@@ -81,14 +76,16 @@ const getUrl = (pattern: UrlPattern, url: string): string => {
 
   const match = pattern.regex.exec(url);
   let newUrl = protocol + pattern.url;
-  for (let i = 0; i < match.length; i++) {
-    newUrl = newUrl.replace('$' + i, () => match[i] ? match[i] : '');
+  if (Type.isNonNullable(match)) {
+    for (let i = 0; i < match.length; i++) {
+      newUrl = newUrl.replace('$' + i, () => match[i] ? match[i] : '');
+    }
   }
 
   return newUrl.replace(/\?$/, '');
 };
 
-const matchPattern = (url: string): UrlPattern => {
+const matchPattern = (url: string): UrlPattern | null => {
   const patterns = urlPatterns.filter((pattern) => pattern.regex.test(url));
 
   if (patterns.length > 0) {

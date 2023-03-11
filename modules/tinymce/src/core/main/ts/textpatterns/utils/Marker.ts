@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import DOMUtils from '../../api/dom/DOMUtils';
 import { PathRange, resolvePathRange } from './PathRange';
 import * as Utils from './Utils';
@@ -34,10 +27,12 @@ const createMarker = (dom: DOMUtils, markerPrefix: string, pathRange: PathRange)
   // Create the marker
   const textEnd = rng.endOffset === 0 ? endNode : endNode.splitText(rng.endOffset);
   const textStart = rng.startOffset === 0 ? startNode : startNode.splitText(rng.startOffset);
+  const startParentNode = textStart.parentNode as Node;
+  const endParentNode = textEnd.parentNode as Node;
   return {
     prefix: markerPrefix,
-    end: textEnd.parentNode.insertBefore(newMarker(dom, markerPrefix + '-end'), textEnd),
-    start: textStart.parentNode.insertBefore(newMarker(dom, markerPrefix + '-start'), textStart)
+    end: endParentNode.insertBefore(newMarker(dom, markerPrefix + '-end'), textEnd),
+    start: startParentNode.insertBefore(newMarker(dom, markerPrefix + '-start'), textStart)
   };
 };
 

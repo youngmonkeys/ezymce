@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
 
 export const enum PluginType {
@@ -24,6 +17,7 @@ export interface PluginUrl extends PartialPluginUrl {
   readonly slug: string;
 }
 
+// These lists are automatically sorted when generating the dialog.
 const urls = Arr.map<PartialPluginUrl, PluginUrl>([
   { key: 'advlist', name: 'Advanced List' },
   { key: 'anchor', name: 'Anchor' },
@@ -45,9 +39,7 @@ const urls = Arr.map<PartialPluginUrl, PluginUrl>([
   { key: 'lists', name: 'Lists' },
   { key: 'media', name: 'Media' },
   { key: 'nonbreaking', name: 'Nonbreaking' },
-  { key: 'noneditable', name: 'Noneditable' },
   { key: 'pagebreak', name: 'Page Break' },
-  { key: 'paste', name: 'Paste' },
   { key: 'preview', name: 'Preview' },
   { key: 'quickbars', name: 'Quick Toolbars' },
   { key: 'save', name: 'Save' },
@@ -62,23 +54,27 @@ const urls = Arr.map<PartialPluginUrl, PluginUrl>([
   { key: 'a11ychecker', name: 'Accessibility Checker', type: PluginType.Premium },
   { key: 'advcode', name: 'Advanced Code Editor', type: PluginType.Premium },
   { key: 'advtable', name: 'Advanced Tables', type: PluginType.Premium },
-  { key: 'autocorrect', name: 'Autocorrect', type: PluginType.Premium },
   { key: 'casechange', name: 'Case Change', type: PluginType.Premium },
   { key: 'checklist', name: 'Checklist', type: PluginType.Premium },
+  { key: 'editimage', name: 'Enhanced Image Editing', type: PluginType.Premium },
+  { key: 'footnotes', name: 'Footnotes', type: PluginType.Premium },
+  { key: 'typography', name: 'Advanced Typography', type: PluginType.Premium },
+  { key: 'mediaembed', name: 'Enhanced Media Embed', type: PluginType.Premium, slug: 'introduction-to-mediaembed' },
   { key: 'export', name: 'Export', type: PluginType.Premium },
-  { key: 'imagetools', name: 'Image Tools', type: PluginType.Premium },
-  { key: 'mediaembed', name: 'Enhanced Media Embed', type: PluginType.Premium },
   { key: 'formatpainter', name: 'Format Painter', type: PluginType.Premium },
+  { key: 'inlinecss', name: 'Inline CSS', type: PluginType.Premium },
   { key: 'linkchecker', name: 'Link Checker', type: PluginType.Premium },
   { key: 'mentions', name: 'Mentions', type: PluginType.Premium },
+  { key: 'mergetags', name: 'Merge Tags', type: PluginType.Premium },
   { key: 'pageembed', name: 'Page Embed', type: PluginType.Premium },
   { key: 'permanentpen', name: 'Permanent Pen', type: PluginType.Premium },
-  { key: 'powerpaste', name: 'PowerPaste', type: PluginType.Premium },
-  { key: 'rtc', name: 'Real-Time Collaboration', type: PluginType.Premium },
-  { key: 'tinymcespellchecker', name: 'Spell Checker Pro', type: PluginType.Premium },
-  { key: 'tinycomments', name: 'Tiny Comments', type: PluginType.Premium, slug: 'comments' },
-  { key: 'tinydrive', name: 'Tiny Drive', type: PluginType.Premium },
-  { key: 'toc', name: 'Table of Contents', type: PluginType.Premium },
+  { key: 'powerpaste', name: 'PowerPaste', type: PluginType.Premium, slug: 'introduction-to-powerpaste' },
+  { key: 'rtc', name: 'Real-Time Collaboration', type: PluginType.Premium, slug: 'rtc-introduction' },
+  { key: 'tinymcespellchecker', name: 'Spell Checker Pro', type: PluginType.Premium, slug: 'introduction-to-tiny-spellchecker' },
+  { key: 'autocorrect', name: 'Spelling Autocorrect', type: PluginType.Premium },
+  { key: 'tableofcontents', name: 'Table of Contents', type: PluginType.Premium },
+  { key: 'tinycomments', name: 'Tiny Comments', type: PluginType.Premium, slug: 'introduction-to-tiny-comments' },
+  { key: 'tinydrive', name: 'Tiny Drive', type: PluginType.Premium, slug: 'tinydrive-introduction' },
 ], (item) => ({
   ...item,
   // Set the defaults/fallbacks for the plugin urls

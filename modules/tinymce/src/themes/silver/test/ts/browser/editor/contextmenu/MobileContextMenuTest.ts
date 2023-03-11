@@ -47,7 +47,7 @@ describe('browser.tinymce.themes.silver.editor.contextmenu.MobileContextMenuTest
     const targetElem = UiFinder.findIn(TinyDom.body(editor), target).getOrDie();
     Touch.touchStart(targetElem);
     await Waiter.pWait(500);
-    editor.fire('selectionchange');
+    editor.dispatch('selectionchange');
     Touch.touchEnd(targetElem);
     await Waiter.pWait(100);
     await TinyUiActions.pWaitForPopup(editor, '.tox-silver-sink .tox-collection--horizontal [role="menuitem"]');
@@ -55,7 +55,7 @@ describe('browser.tinymce.themes.silver.editor.contextmenu.MobileContextMenuTest
 
   const pressDownArrowKey = () => Keyboard.activeKeydown(SugarDocument.getDocument(), Keys.down());
   const pressEnterKey = () => Keyboard.activeKeydown(SugarDocument.getDocument(), Keys.enter());
-  const pressEscKey = () => Keyboard.activeKeydown(SugarDocument.getDocument(), Keys.escape());
+  const pressEscKey = () => Keyboard.activeKeyup(SugarDocument.getDocument(), Keys.escape());
 
   const tableHtml = '<table style="width: 100%;">' +
   '<tbody>' +

@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+- Added `measurement` API to StrAssert to allow for approximate measurements in strings. #TINY-9242
+
+## 7.3.0 - 2022-11-23
+
+### Added
+- Added `TestStore` API, which was moved from Alloy and requires types. #TINY-9157
+- Added `exactAttrs`, `exactClasses` and `exactStyles` to `ApproxStructures.element`. #TINY-9102
+
+## 7.2.0 - 2022-09-08
+
+### Improved
+- Exposed the `ArrayAssert` and `StringAssert` types.
+- Exposed the `KeyPressAdt` type. #TINY-8952
+
+## 7.1.0 - 2022-06-29
+
+### Added
+- Added `detail` property to emulated mouse events settings.
+- Added `pClick` to the `RealMouse` API.
+
+## 7.0.0 - 2022-03-03
+
 ### Changed
 - The `sizzle` library is now used directly instead of using the `@ephox/wrap-sizzle` wrapper library.
 - Replaced `jsverify` with `fast-check` for the `Arbitraries` module.

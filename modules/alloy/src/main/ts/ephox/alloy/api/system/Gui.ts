@@ -34,8 +34,6 @@ export interface GuiSystem {
   readonly broadcastEvent: (eventName: string, event: EventArgs) => void;
 }
 
-export type message = Record<string, any>;
-
 const create = (): GuiSystem => {
   const root = GuiFactory.build(
     Container.sketch({
@@ -103,6 +101,7 @@ const takeover = (root: AlloyComponent): GuiSystem => {
       return getByDom(elem);
     },
     build: GuiFactory.build,
+    buildOrPatch: GuiFactory.buildOrPatch,
     addToGui: (c) => {
       add(c);
     },

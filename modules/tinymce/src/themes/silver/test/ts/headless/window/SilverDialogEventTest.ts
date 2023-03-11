@@ -1,4 +1,4 @@
-import { Mouse, UiFinder, Waiter } from '@ephox/agar';
+import { Mouse, TestStore, UiFinder, Waiter } from '@ephox/agar';
 import { AlloyComponent, Behaviour, GuiFactory, ModalDialog, Positioning, TestHelpers } from '@ephox/alloy';
 import { before, beforeEach, describe, it } from '@ephox/bedrock-client';
 import { ValueType } from '@ephox/boulder';
@@ -7,8 +7,8 @@ import { Fun, Optional, Result } from '@ephox/katamari';
 import { SugarBody } from '@ephox/sugar';
 
 import I18n from 'tinymce/core/api/util/I18n';
+import { UiFactoryBackstage } from 'tinymce/themes/silver/backstage/Backstage';
 import { renderDialog } from 'tinymce/themes/silver/ui/window/SilverDialog';
-import { WindowExtra } from 'tinymce/themes/silver/ui/window/SilverDialogCommon';
 
 describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
   const hook = TestHelpers.GuiSetup.bddSetup(() =>
@@ -23,7 +23,7 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
     })
   );
 
-  const dialogSpec = (store: TestHelpers.TestStore): DialogManager.DialogInit<{}> => ({
+  const dialogSpec = (store: TestStore): DialogManager.DialogInit<{}> => ({
     internalDialog: {
       title: 'test dialog',
       size: 'normal',
@@ -39,7 +39,8 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
           text: 'Cancel',
           align: 'end',
           primary: false,
-          disabled: false,
+          buttonType: Optional.some('secondary'),
+          enabled: true,
           icon: Optional.none()
         },
         {
@@ -48,7 +49,8 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
           text: 'Save',
           align: 'end',
           primary: true,
-          disabled: false,
+          buttonType: Optional.some('primary'),
+          enabled: true,
           icon: Optional.none()
         }
       ],
@@ -77,7 +79,7 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
       {
         redial: () => dialogSpec(store),
         closeWindow: () => store.adder('closeWindow')
-      } as WindowExtra,
+      },
       {
         shared: {
           getSink: () => Result.value(sink),
@@ -92,7 +94,7 @@ describe('headless.tinymce.themes.silver.window.SilverDialogEventTest', () => {
         dialog: {
           isDraggableModal: Fun.never
         }
-      }
+      } as UiFactoryBackstage
     );
 
     dialog = dialogStuff.dialog;

@@ -1,16 +1,8 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 import { NodeChangeEvent } from 'tinymce/core/api/EventTypes';
 import { Menu, Toolbar } from 'tinymce/core/api/ui/Ui';
 import VK from 'tinymce/core/api/util/VK';
 
-import * as Dialog from '../ui/Dialog';
 import * as OpenUrl from './OpenUrl';
 import * as Utils from './Utils';
 
@@ -39,7 +31,7 @@ const gotoLink = (editor: Editor, a: HTMLAnchorElement | null): void => {
 };
 
 const openDialog = (editor: Editor) => (): void => {
-  Dialog.open(editor);
+  editor.execCommand('mceLink', false, { dialog: true });
 };
 
 const gotoSelectedLink = (editor: Editor) => (): void => {
@@ -56,10 +48,12 @@ const setupGotoLinks = (editor: Editor): void => {
   });
 
   editor.on('keydown', (e) => {
-    const link = getSelectedLink(editor);
-    if (link && e.keyCode === 13 && hasOnlyAltModifier(e)) {
-      e.preventDefault();
-      gotoLink(editor, link);
+    if (!e.isDefaultPrevented() && e.keyCode === 13 && hasOnlyAltModifier(e)) {
+      const link = getSelectedLink(editor);
+      if (link) {
+        e.preventDefault();
+        gotoLink(editor, link);
+      }
     }
   });
 };
@@ -70,13 +64,20 @@ const toggleState = (editor: Editor, toggler: (e: NodeChangeEvent) => void): () 
 };
 
 const toggleActiveState = (editor: Editor) => (api: Toolbar.ToolbarToggleButtonInstanceApi | Menu.ToggleMenuItemInstanceApi): () => void => {
-  const updateState = () => api.setActive(!editor.mode.isReadOnly() && Utils.getAnchorElement(editor, editor.selection.getNode()) !== null);
+  const updateState = () => api.setActive(!editor.mode.isReadOnly() && Utils.isInAnchor(editor, editor.selection.getNode()));
   updateState();
   return toggleState(editor, updateState);
 };
 
+const hasExactlyOneLinkInSelection = (editor: Editor): boolean => {
+  const links = editor.selection.isCollapsed() ?
+    Utils.getLinks(editor.dom.getParents(editor.selection.getStart())) :
+    Utils.getLinksInSelection(editor.selection.getRng());
+  return links.length === 1;
+};
+
 const toggleEnabledState = (editor: Editor) => (api: Toolbar.ToolbarButtonInstanceApi | Menu.MenuItemInstanceApi): () => void => {
-  const updateState = () => api.setDisabled(Utils.getAnchorElement(editor, editor.selection.getNode()) === null);
+  const updateState = () => api.setEnabled(hasExactlyOneLinkInSelection(editor));
   updateState();
   return toggleState(editor, updateState);
 };
@@ -84,8 +85,8 @@ const toggleEnabledState = (editor: Editor) => (api: Toolbar.ToolbarButtonInstan
 const toggleUnlinkState = (editor: Editor) => (api: Toolbar.ToolbarButtonInstanceApi | Menu.MenuItemInstanceApi): () => void => {
   const hasLinks = (parents: Node[]) => Utils.hasLinks(parents) || Utils.hasLinksInSelection(editor.selection.getRng());
   const parents = editor.dom.getParents(editor.selection.getStart());
-  api.setDisabled(!hasLinks(parents));
-  return toggleState(editor, (e) => api.setDisabled(!hasLinks(e.parents)));
+  api.setEnabled(hasLinks(parents));
+  return toggleState(editor, (e) => api.setEnabled(hasLinks(e.parents)));
 };
 
 export {

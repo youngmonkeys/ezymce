@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
@@ -18,18 +11,7 @@ import { isWsPreserveElement } from '../dom/ElementType';
 import * as NodeType from '../dom/NodeType';
 import * as EditorFocus from '../focus/EditorFocus';
 import * as FilterNode from '../html/FilterNode';
-import { Content, SetContentArgs } from './ContentTypes';
-import { postProcessSetContent, preProcessSetContent } from './PrePostProcess';
-
-interface SetContentResult {
-  readonly content: Content;
-  readonly html: string;
-}
-
-const defaultFormat = 'html';
-
-const isTreeNode = (content: unknown): content is AstNode =>
-  content instanceof AstNode;
+import { Content, isTreeNode, SetContentArgs, SetContentResult } from './ContentTypes';
 
 const moveSelection = (editor: Editor): void => {
   if (EditorFocus.hasFocus(editor)) {
@@ -64,13 +46,12 @@ const setContentString = (editor: Editor, body: HTMLElement, content: string, ar
 
     const forcedRootBlockName = Options.getForcedRootBlock(editor);
 
-    // Check if forcedRootBlock is configured and that the block is a valid child of the body
-    if (forcedRootBlockName && editor.schema.isValidChild(body.nodeName.toLowerCase(), forcedRootBlockName.toLowerCase())) {
+    // Check if forcedRootBlock is a valid child of the body
+    if (editor.schema.isValidChild(body.nodeName.toLowerCase(), forcedRootBlockName.toLowerCase())) {
       content = padd;
       content = editor.dom.createHTML(forcedRootBlockName, Options.getForcedRootBlockAttrs(editor), content);
     } else if (!content) {
-      // We need to add a BR when forced_root_block is disabled to place the caret
-      content = '<br data-mce-bogus="1">';
+      content = padd;
     }
 
     setEditorHtml(editor, content, args.no_selection);
@@ -101,28 +82,12 @@ const setContentTree = (editor: Editor, body: HTMLElement, content: AstNode, arg
   return { content, html: trimmedHtml };
 };
 
-const setupArgs = (args: Partial<SetContentArgs>, content: Content): SetContentArgs => ({
-  format: defaultFormat,
-  ...args,
-  set: true,
-  content: isTreeNode(content) ? '' : content
-});
-
-export const setContentInternal = (editor: Editor, content: Content, args: Partial<SetContentArgs>): Content => {
-  const defaultedArgs = setupArgs(args, content);
-  return preProcessSetContent(editor, defaultedArgs).map((updatedArgs) => {
-    // Don't use the content from the args for tree, as it'll be an empty string
-    const updatedContent = isTreeNode(content) ? content : updatedArgs.content;
-
-    const result = Optional.from(editor.getBody()).map((body) => {
-      if (isTreeNode(updatedContent)) {
-        return setContentTree(editor, body, updatedContent, updatedArgs);
-      } else {
-        return setContentString(editor, body, updatedContent, updatedArgs);
-      }
-    }).getOr({ content, html: updatedArgs.content });
-
-    postProcessSetContent(editor, result.html, updatedArgs);
-    return result.content;
-  }).getOr(content);
+export const setContentInternal = (editor: Editor, content: Content, args: SetContentArgs): SetContentResult => {
+  return Optional.from(editor.getBody()).map((body) => {
+    if (isTreeNode(content)) {
+      return setContentTree(editor, body, content, args);
+    } else {
+      return setContentString(editor, body, content, args);
+    }
+  }).getOr({ content, html: isTreeNode(args.content) ? '' : args.content });
 };

@@ -12,7 +12,7 @@ describe('browser.tinymce.plugins.image.ImageResizeTest', () => {
     plugins: 'image',
     toolbar: 'image',
     base_url: '/project/tinymce/js/tinymce',
-    file_picker_callback: (callback) => {
+    file_picker_callback: (callback: (url: string) => void) => {
       // eslint-disable-next-line no-console
       console.log('file picker pressed');
       callback('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
@@ -28,6 +28,6 @@ describe('browser.tinymce.plugins.image.ImageResizeTest', () => {
     setInputValue(generalTabSelectors.height, '5');
     await Waiter.pTryUntil('did not find width input with value 5', () => assertInputValue(generalTabSelectors.width, '5'));
     TinyUiActions.submitDialog(editor);
-    assertCleanHtml('Checking output', editor, '<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" width="5" height="5" /></p>');
+    assertCleanHtml('Checking output', editor, '<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" width="5" height="5"></p>');
   });
 });

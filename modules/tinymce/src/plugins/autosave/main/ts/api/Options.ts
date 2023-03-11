@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -13,8 +6,8 @@ import { EditorOptions } from 'tinymce/core/api/OptionTypes';
 import * as Time from '../core/Time';
 
 const option: {
-  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K] | undefined;
-  <T>(name: string): (editor: Editor) => T | undefined;
+  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K];
+  <T>(name: string): (editor: Editor) => T;
 } = (name: string) => (editor: Editor) =>
   editor.options.get(name);
 
@@ -60,7 +53,6 @@ const shouldAskBeforeUnload = option<boolean>('autosave_ask_before_unload');
 const shouldRestoreWhenEmpty = option<boolean>('autosave_restore_when_empty');
 const getAutoSaveInterval = option<number>('autosave_interval');
 const getAutoSaveRetention = option<number>('autosave_retention');
-const getForcedRootBlock = option('forced_root_block');
 
 const getAutoSavePrefix = (editor: Editor): string => {
   const location = document.location;
@@ -76,6 +68,5 @@ export {
   getAutoSavePrefix,
   shouldRestoreWhenEmpty,
   getAutoSaveInterval,
-  getAutoSaveRetention,
-  getForcedRootBlock
+  getAutoSaveRetention
 };

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Unicode } from '@ephox/katamari';
 
 import { textBefore } from '../../alien/TextSearch';
@@ -16,51 +9,61 @@ import { PatternSet } from '../core/PatternTypes';
 import * as Utils from '../utils/Utils';
 
 const handleEnter = (editor: Editor, patternSet: PatternSet): boolean => {
-  // Skip checking when the selection isn't collapsed
-  if (!editor.selection.isCollapsed()) {
+  const rng = editor.selection.getRng();
+  return Utils.getParentBlock(editor, rng).map((block) => {
+    const offset = Math.max(0, rng.startOffset);
+    const dynamicPatternSet = Utils.resolveFromDynamicPatterns(patternSet, block, block.textContent ?? '');
+    // IMPORTANT: We need to get normalized match results since undoing and redoing the editor state
+    // via undoManager.extra() will result in the DOM being normalized.
+    const inlineMatches = InlinePattern.findPatterns(editor, block, rng.startContainer, offset, dynamicPatternSet, true);
+    const blockMatches = BlockPattern.findPatterns(editor, block, dynamicPatternSet, true);
+    if (blockMatches.length > 0 || inlineMatches.length > 0) {
+      editor.undoManager.add();
+      editor.undoManager.extra(
+        () => {
+          editor.execCommand('mceInsertNewLine');
+        },
+        () => {
+          // create a cursor position that we can move to avoid the inline formats
+          editor.insertContent(Unicode.zeroWidth);
+          InlinePattern.applyMatches(editor, inlineMatches);
+          BlockPattern.applyMatches(editor, blockMatches);
+          // find the spot before the cursor position
+          const range = editor.selection.getRng();
+          const spot = textBefore(range.startContainer, range.startOffset, editor.dom.getRoot());
+          editor.execCommand('mceInsertNewLine');
+          // clean up the cursor position we used to preserve the format
+          spot.each((s) => {
+            const node = s.container;
+            if (node.data.charAt(s.offset - 1) === Unicode.zeroWidth) {
+              node.deleteData(s.offset - 1, 1);
+              Utils.cleanEmptyNodes(editor.dom, node.parentNode, (e: Node) => e === editor.dom.getRoot());
+            }
+          });
+        }
+      );
+      return true;
+    }
     return false;
-  }
-
-  // Find any matches
-  const inlineMatches = InlinePattern.findPatterns(editor, patternSet.inlinePatterns, false);
-  const blockMatches = BlockPattern.findPatterns(editor, patternSet.blockPatterns);
-  if (blockMatches.length > 0 || inlineMatches.length > 0) {
-    editor.undoManager.add();
-    editor.undoManager.extra(
-      () => {
-        editor.execCommand('mceInsertNewLine');
-      },
-      () => {
-        // create a cursor position that we can move to avoid the inline formats
-        editor.insertContent(Unicode.zeroWidth);
-        InlinePattern.applyMatches(editor, inlineMatches);
-        BlockPattern.applyMatches(editor, blockMatches);
-        // find the spot before the cursor position
-        const range = editor.selection.getRng();
-        const spot = textBefore(range.startContainer, range.startOffset, editor.dom.getRoot());
-        editor.execCommand('mceInsertNewLine');
-        // clean up the cursor position we used to preserve the format
-        spot.each((s) => {
-          const node = s.container;
-          if (node.data.charAt(s.offset - 1) === Unicode.zeroWidth) {
-            node.deleteData(s.offset - 1, 1);
-            Utils.cleanEmptyNodes(editor.dom, node.parentNode, (e: Node) => e === editor.dom.getRoot());
-          }
-        });
-      }
-    );
-    return true;
-  }
-  return false;
+  }).getOr(false);
 };
 
-const handleInlineKey = (editor: Editor, patternSet: PatternSet): void => {
-  const inlineMatches = InlinePattern.findPatterns(editor, patternSet.inlinePatterns, true);
-  if (inlineMatches.length > 0) {
-    editor.undoManager.transact(() => {
-      InlinePattern.applyMatches(editor, inlineMatches);
-    });
-  }
+const handleInlineKey = (
+  editor: Editor,
+  patternSet: PatternSet
+): void => {
+  const rng = editor.selection.getRng();
+  Utils.getParentBlock(editor, rng).map((block) => {
+    const offset = Math.max(0, rng.startOffset - 1);
+    const beforeText = Utils.getBeforeText(editor.dom, block, rng.startContainer, offset);
+    const dynamicPatternSet = Utils.resolveFromDynamicPatterns(patternSet, block, beforeText);
+    const inlineMatches = InlinePattern.findPatterns(editor, block, rng.startContainer, offset, dynamicPatternSet, false);
+    if (inlineMatches.length > 0) {
+      editor.undoManager.transact(() => {
+        InlinePattern.applyMatches(editor, inlineMatches);
+      });
+    }
+  });
 };
 
 const checkKeyEvent = <T>(codes: T[], event: KeyboardEvent, predicate: (code: T, event: KeyboardEvent) => boolean): boolean => {
@@ -74,7 +77,7 @@ const checkKeyEvent = <T>(codes: T[], event: KeyboardEvent, predicate: (code: T,
 
 const checkKeyCode = (codes: number[], event: KeyboardEvent): boolean =>
   checkKeyEvent(codes, event, (code, event) => {
-    return code === event.keyCode && VK.modifierPressed(event) === false;
+    return code === event.keyCode && !VK.modifierPressed(event);
   });
 
 const checkCharCode = (chars: string[], event: KeyboardEvent): boolean =>

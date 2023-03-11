@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional } from '@ephox/katamari';
 import { Remove, SugarElement, SugarNode, Traverse } from '@ephox/sugar';
 
@@ -102,7 +95,7 @@ const cleanContent = (editor: Editor, args: SetSelectionContentArgs) => {
     const contextBlock = editor.dom.getParent(rng.commonAncestorContainer, editor.dom.isBlock);
     const contextArgs = contextBlock ? { context: contextBlock.nodeName.toLowerCase() } : { };
 
-    const node = editor.parser.parse(args.content, { isRootContent: true, forced_root_block: false, ...contextArgs, ...args });
+    const node = editor.parser.parse(args.content, { forced_root_block: false, ...contextArgs, ...args });
     return HtmlSerializer({ validate: false }, editor.schema).serialize(node);
   } else {
     return args.content;

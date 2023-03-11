@@ -1,28 +1,25 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Optional, Singleton, Throttler, Thunk, Type } from '@ephox/katamari';
-import { SugarElement } from '@ephox/sugar';
+import { Cell, Optional, Singleton, Throttler, Thunk, Type } from '@ephox/katamari';
 
 import Editor from '../api/Editor';
 import { fireAutocompleterEnd, fireAutocompleterStart, fireAutocompleterUpdate } from '../api/Events';
 import { AutocompleteContext, getContext } from '../autocomplete/AutocompleteContext';
 import { AutocompleteLookupInfo, lookup, lookupWithContext } from '../autocomplete/AutocompleteLookup';
 import * as Autocompleters from '../autocomplete/Autocompleters';
-import * as AutocompleteTag from '../autocomplete/AutocompleteTag';
 import { AutocompleterReloadArgs } from '../autocomplete/AutocompleteTypes';
+import * as Rtc from '../Rtc';
 
 interface ActiveAutocompleter {
-  readonly triggerChar: string;
+  readonly trigger: string;
   readonly matchLength: number;
 }
 
-const setupEditorInput = (editor: Editor, load: (fetchOptions?: Record<string, any>) => void) => {
-  const update = Throttler.last(load, 50);
+interface AutocompleterApi {
+  readonly cancelIfNecessary: () => void;
+  readonly load: (fetchOptions?: Record<string, any>) => void;
+}
+
+const setupEditorInput = (editor: Editor, api: AutocompleterApi) => {
+  const update = Throttler.last(api.load, 50);
 
   editor.on('keypress compositionend', (e) => {
     // IE will pass the escape key here, so just don't do anything on escape
@@ -34,9 +31,14 @@ const setupEditorInput = (editor: Editor, load: (fetchOptions?: Record<string, a
   });
 
   editor.on('keydown', (e) => {
+    const keyCode = e.which;
+
     // Pressing <backspace> updates the autocompleter
-    if (e.which === 8) {
+    if (keyCode === 8) {
       update.throttle();
+    // Pressing <esc> closes the autocompleter
+    } else if (keyCode === 27) {
+      api.cancelIfNecessary();
     }
   });
 
@@ -45,13 +47,15 @@ const setupEditorInput = (editor: Editor, load: (fetchOptions?: Record<string, a
 
 export const setup = (editor: Editor): void => {
   const activeAutocompleter = Singleton.value<ActiveAutocompleter>();
+  const uiActive = Cell<boolean>(false);
 
   const isActive = activeAutocompleter.isSet;
 
   const cancelIfNecessary = () => {
     if (isActive()) {
-      AutocompleteTag.remove(SugarElement.fromDom(editor.getBody()));
+      Rtc.removeAutocompleterDecoration(editor);
       fireAutocompleterEnd(editor);
+      uiActive.set(false);
       activeAutocompleter.clear();
     }
   };
@@ -59,17 +63,13 @@ export const setup = (editor: Editor): void => {
   const commenceIfNecessary = (context: AutocompleteContext) => {
     if (!isActive()) {
       // Create the wrapper
-      AutocompleteTag.create(editor, context.range);
+      Rtc.addAutocompleterDecoration(editor, context.range);
 
       // store the element/context
       activeAutocompleter.set({
-        triggerChar: context.triggerChar,
+        trigger: context.trigger,
         matchLength: context.text.length
       });
-
-      return true;
-    } else {
-      return false;
     }
   };
 
@@ -79,17 +79,17 @@ export const setup = (editor: Editor): void => {
   // first time, and after that it's value is stored.
   const getAutocompleters: () => Autocompleters.AutocompleterDatabase = Thunk.cached(() => Autocompleters.register(editor));
 
-  const doLookup = (fetchOptions?: Record<string, any>): Optional<AutocompleteLookupInfo> =>
+  const doLookup = (fetchOptions: Record<string, any> | undefined): Optional<AutocompleteLookupInfo> =>
     activeAutocompleter.get().map(
-      (ac) => getContext(editor.dom, editor.selection.getRng(), ac.triggerChar)
+      (ac) => getContext(editor.dom, editor.selection.getRng(), ac.trigger)
         .bind((newContext) => lookupWithContext(editor, getAutocompleters, newContext, fetchOptions))
     ).getOrThunk(() => lookup(editor, getAutocompleters));
 
-  const load = (fetchOptions?: Record<string, any>) => {
+  const load = (fetchOptions: Record<string, any> | undefined) => {
     doLookup(fetchOptions).fold(
       cancelIfNecessary,
       (lookupInfo) => {
-        const wasNecessary = commenceIfNecessary(lookupInfo.context);
+        commenceIfNecessary(lookupInfo.context);
 
         // Wait for the results to return and then display the menu
         lookupInfo.lookupData.then((lookupData) => {
@@ -99,7 +99,7 @@ export const setup = (editor: Editor): void => {
 
             // Ensure the active autocompleter trigger matches, as the old one may have closed
             // and a new one may have opened. If it doesn't match, then do nothing.
-            if (ac.triggerChar === context.triggerChar) {
+            if (ac.trigger === context.trigger) {
               // close if we haven't found any matches in the last 10 chars
               if (context.text.length - ac.matchLength >= 10) {
                 cancelIfNecessary();
@@ -109,10 +109,11 @@ export const setup = (editor: Editor): void => {
                   matchLength: context.text.length
                 });
 
-                if (wasNecessary) {
-                  fireAutocompleterStart(editor, { lookupData });
-                } else {
+                if (uiActive.get()) {
                   fireAutocompleterUpdate(editor, { lookupData });
+                } else {
+                  uiActive.set(true);
+                  fireAutocompleterStart(editor, { lookupData });
                 }
               }
             }
@@ -123,11 +124,14 @@ export const setup = (editor: Editor): void => {
   };
 
   editor.addCommand('mceAutocompleterReload', (_ui, value: AutocompleterReloadArgs) => {
-    const fetchOptions: Record<string, any> = Type.isObject(value) ? value.fetchOptions : {};
+    const fetchOptions = Type.isObject(value) ? value.fetchOptions : {};
     load(fetchOptions);
   });
 
   editor.addCommand('mceAutocompleterClose', cancelIfNecessary);
 
-  setupEditorInput(editor, load);
+  setupEditorInput(editor, {
+    cancelIfNecessary,
+    load
+  });
 };

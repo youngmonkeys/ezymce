@@ -16,7 +16,7 @@ describe('browser.tinymce.plugins.image.DialogTest', () => {
   }, [ Plugin ]);
 
   const pressTab = (editor: Editor) => TinyUiActions.keydown(editor, Keys.tab());
-  const pressEsc = (editor: Editor) => TinyUiActions.keydown(editor, Keys.escape());
+  const pressEsc = (editor: Editor) => TinyUiActions.keyup(editor, Keys.escape());
   const pressDown = (editor: Editor) => TinyUiActions.keydown(editor, Keys.down());
 
   const pAssertFocused = (name: string, selector: string) => FocusTools.pTryOnSelector(name, SugarDocument.getDocument(), selector);
@@ -103,8 +103,6 @@ describe('browser.tinymce.plugins.image.DialogTest', () => {
     await pAssertFocused('General tab', '.tox-dialog__body-nav-item:contains("General")');
     pressDown(editor);
     await pAssertFocused('Advanced tab', '.tox-dialog__body-nav-item:contains("Advanced")');
-    pressTab(editor);
-    await pAssertFocused('Style', '.tox-textfield');
     pressTab(editor);
     await pAssertFocused('Vertical space', '.tox-textfield');
     pressTab(editor);

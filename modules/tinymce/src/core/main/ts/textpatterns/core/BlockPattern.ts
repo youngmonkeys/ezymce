@@ -1,11 +1,5 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Obj, Optional, Type, Unicode } from '@ephox/katamari';
+import { SugarText, SugarElement } from '@ephox/sugar';
 
 import * as TextSearch from '../../alien/TextSearch';
 import DOMUtils from '../../api/dom/DOMUtils';
@@ -15,7 +9,9 @@ import * as Options from '../../api/Options';
 import Tools from '../../api/util/Tools';
 import { generatePathRange, resolvePathRange } from '../utils/PathRange';
 import * as Utils from '../utils/Utils';
-import { BlockPattern, BlockPatternMatch, Pattern } from './PatternTypes';
+import { BlockPattern, BlockPatternMatch, Pattern, PatternSet } from './PatternTypes';
+
+const startsWithSingleSpace = (s: string): boolean => /^\s[^\s]/.test(s);
 
 const stripPattern = (dom: DOMUtils, block: Node, pattern: BlockPattern): void => {
   // The pattern could be across fragmented text nodes, so we need to find the end
@@ -30,6 +26,20 @@ const stripPattern = (dom: DOMUtils, block: Node, pattern: BlockPattern): void =
 
       Utils.deleteRng(dom, rng, (e: Node) => e === block);
     });
+
+    /**
+     * TINY-9603: If there is a single space between pattern.start and text (e.g. # 1)
+     * then it will be left in the text content and then can appear in certain circumstances.
+     * This is not an issue with multiple spaces because they are transformed to non-breaking ones.
+     *
+     * In this specific case we've decided to remove this single space whatsoever
+     * as it feels to be the expected behavior.
+     */
+    const text = SugarElement.fromDom(node);
+    const textContent = SugarText.get(text);
+    if (startsWithSingleSpace(textContent)) {
+      SugarText.set(text, textContent.slice(1));
+    }
   });
 };
 
@@ -62,36 +72,34 @@ const applyPattern = (editor: Editor, match: BlockPatternMatch): boolean => {
   return true;
 };
 
+const sortPatterns = <P extends Pattern>(patterns: P[]): P[] =>
+  Arr.sort(patterns, (a, b) => b.start.length - a.start.length);
+
 // Finds a matching pattern to the specified text
 const findPattern = <P extends Pattern>(patterns: P[], text: string): Optional<P> => {
+  const sortedPatterns = sortPatterns(patterns);
   const nuText = text.replace(Unicode.nbsp, ' ');
-  return Arr.find(patterns, (pattern) => text.indexOf(pattern.start) === 0 || nuText.indexOf(pattern.start) === 0);
+  return Arr.find(sortedPatterns, (pattern) => text.indexOf(pattern.start) === 0 || nuText.indexOf(pattern.start) === 0);
 };
 
-const findPatterns = (editor: Editor, patterns: BlockPattern[]): BlockPatternMatch[] => {
+const findPatterns = (editor: Editor, block: Element, patternSet: PatternSet, normalizedMatches: boolean): BlockPatternMatch[] => {
   const dom = editor.dom;
-  const rng = editor.selection.getRng();
+  const forcedRootBlock = Options.getForcedRootBlock(editor);
+  if (!dom.is(block, forcedRootBlock)) {
+    return [];
+  }
 
-  return Utils.getParentBlock(editor, rng).filter((block) => {
-    const forcedRootBlock = Options.getForcedRootBlock(editor);
-    const matchesForcedRootBlock = forcedRootBlock === '' && dom.is(block, 'body') || dom.is(block, forcedRootBlock);
-    return block !== null && matchesForcedRootBlock;
-  }).bind((block) => {
-    // Get the block text
-    const blockText = block.textContent;
+  // Get the block text and then find a matching pattern
+  const blockText = block.textContent ?? '';
+  return findPattern(patternSet.blockPatterns, blockText).map((pattern) => {
+    if (Tools.trim(blockText).length === pattern.start.length) {
+      return [];
+    }
 
-    // Find the pattern
-    const matchedPattern = findPattern(patterns, blockText);
-    return matchedPattern.map((pattern) => {
-      if (Tools.trim(blockText).length === pattern.start.length) {
-        return [];
-      }
-
-      return [{
-        pattern,
-        range: generatePathRange(dom.getRoot(), block, 0, block, 0)
-      }];
-    });
+    return [{
+      pattern,
+      range: generatePathRange(dom, dom.getRoot(), block, 0, block, 0, normalizedMatches)
+    }];
   }).getOr([]);
 };
 

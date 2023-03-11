@@ -1,16 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Obj, Type } from '@ephox/katamari';
 
 import * as ErrorReporter from '../ErrorReporter';
 import * as FocusController from '../focus/FocusController';
 import AddOnManager from './AddOnManager';
 import DOMUtils from './dom/DOMUtils';
+import { EventUtilsEvent } from './dom/EventUtils';
 import Editor from './Editor';
 import Env from './Env';
 import { EditorManagerEventMap } from './EventTypes';
@@ -20,36 +14,29 @@ import Observable from './util/Observable';
 import Tools from './util/Tools';
 import URI from './util/URI';
 
-declare const window: Window & { tinymce: any; tinyMCEPreInit: any };
+interface PreInit {
+  suffix: string;
+  baseURL: string;
+  base?: string;
+}
 
-// NOTE: the class tag is commented out for the include in `modules/tinymce/tools/docs/tinymce.js`
-/**
- * This class used as a factory for manager for tinymce.Editor instances.
- *
- * @example
- * tinymce.EditorManager.init({});
- *
- * /@class tinymce.EditorManager
- * @mixes tinymce.util.Observable
- * @static
- * @private
- */
+declare const window: Window & { tinymce?: PreInit; tinyMCEPreInit?: PreInit };
 
 const DOM = DOMUtils.DOM;
 const each = Tools.each;
 let boundGlobalEvents = false;
 let beforeUnloadDelegate: (e: BeforeUnloadEvent) => any;
-let editors = [];
+let editors: Editor[] = [];
 
-const globalEventDelegate = (e) => {
+const globalEventDelegate = (e: EventUtilsEvent<UIEvent | Event>): void => {
   const type = e.type;
   each(EditorManager.get(), (editor) => {
     switch (type) {
       case 'scroll':
-        editor.fire('ScrollWindow', e);
+        editor.dispatch('ScrollWindow', e);
         break;
       case 'resize':
-        editor.fire('ResizeWindow', e);
+        editor.dispatch('ResizeWindow', e as EventUtilsEvent<UIEvent>);
         break;
     }
   });
@@ -90,17 +77,14 @@ const removeEditorFromList = (targetEditor: Editor) => {
   return oldEditors.length !== editors.length;
 };
 
-const purgeDestroyedEditor = (editor: Editor) => {
+const purgeDestroyedEditor = (editor: Editor | null): void => {
   // User has manually destroyed the editor lets clean up the mess
   if (editor && editor.initialized && !(editor.getContainer() || editor.getBody()).parentNode) {
     removeEditorFromList(editor);
     editor.unbindAllNativeEvents();
     editor.destroy(true);
     editor.removed = true;
-    editor = null;
   }
-
-  return editor;
 };
 
 interface EditorManager extends Observable<EditorManagerEventMap> {
@@ -108,9 +92,8 @@ interface EditorManager extends Observable<EditorManagerEventMap> {
   majorVersion: string;
   minorVersion: string;
   releaseDate: string;
-  activeEditor: Editor;
-  focusedEditor: Editor;
-  settings: RawEditorOptions;
+  activeEditor: Editor | null;
+  focusedEditor: Editor | null;
   baseURI: URI;
   baseURL: string;
   documentBaseURL: string;
@@ -122,11 +105,13 @@ interface EditorManager extends Observable<EditorManagerEventMap> {
   createEditor (this: EditorManager, id: string, options: RawEditorOptions): Editor;
   execCommand (this: EditorManager, cmd: string, ui: boolean, value: any): boolean;
   get (this: EditorManager): Editor[];
-  get (this: EditorManager, id: number | string): Editor;
+  get (this: EditorManager, id: number | string): Editor | null;
   init (this: EditorManager, options: RawEditorOptions): Promise<Editor[]>;
   overrideDefaults (this: EditorManager, defaultOptions: Partial<RawEditorOptions>): void;
   remove (this: EditorManager): void;
-  remove (this: EditorManager, selector: string | Editor): Editor | void;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
+  remove (this: EditorManager, selector: string): void;
+  remove (this: EditorManager, editor: Editor): Editor | null;
   setActive (this: EditorManager, editor: Editor): void;
   setup (this: EditorManager): void;
   translate: (text: Untranslated) => TranslatedString;
@@ -139,11 +124,19 @@ const isQuirksMode = document.compatMode !== 'CSS1Compat';
 const EditorManager: EditorManager = {
   ...Observable,
 
-  baseURI: null,
-  baseURL: null,
+  baseURI: null as any,
+  baseURL: null as any,
+
+  /**
+   * Object containing the options that will be passed by default to the <code>init</code> method upon each initialization of an editor. These defaults will be shallow merged with other options passed to <code>init</code>.
+   *
+   * @property defaultOptions
+   * @type Object
+   */
   defaultOptions: {},
-  documentBaseURL: null,
-  suffix: null,
+
+  documentBaseURL: null as any,
+  suffix: null as any,
 
   /**
    * Major version of TinyMCE build.
@@ -189,14 +182,13 @@ const EditorManager: EditorManager = {
   activeEditor: null,
   focusedEditor: null,
 
-  settings: {},
-
   setup() {
-    const self: EditorManager = this;
-    let baseURL, documentBaseURL, suffix = '';
+    const self = this;
+    let baseURL = '';
+    let suffix = '';
 
     // Get base URL for the current document
-    documentBaseURL = URI.getDocumentBaseUrl(document.location);
+    let documentBaseURL = URI.getDocumentBaseUrl(document.location);
 
     // Check if the URL is a document based format like: http://site/dir/file and file:///
     // leave other formats like applewebdata://... intact
@@ -286,10 +278,23 @@ const EditorManager: EditorManager = {
   },
 
   /**
-   * Overrides the default options for editor instances.
+   * Overrides the default options for editor instances. The <code>overrideDefaults</code> method replaces the <code>defaultOptions</code>, including any set by a previous call to the <code>overrideDefaults</code> method.
+   * <br /><br />
+   * When using the Tiny Cloud, some of these defaults are required for the cloud-based editor to function.
+   * <br /><br />
+   * Therefore, when using <code>overrideDefaults</code> with the cloud-based editor, any newly integrated options must be combined with the options in <code>tinymce.defaultOptions</code>.
    *
    * @method overrideDefaults
-   * @param {Object} defaultOptions Defaults options object.
+   * @param {Object} defaultOptions Default options object.
+   * @example
+   * const customOptions = {
+   *   toolbar_sticky: true
+   * };
+   *
+   * tinymce.overrideDefaults({
+   *   ...tinymce.defaultOptions,
+   *   ...customOptions
+   * });
    */
   overrideDefaults(defaultOptions) {
     const baseUrl = defaultOptions.base_url;
@@ -298,7 +303,7 @@ const EditorManager: EditorManager = {
     }
 
     const suffix = defaultOptions.suffix;
-    if (defaultOptions.suffix) {
+    if (suffix) {
       this.suffix = suffix;
     }
 
@@ -315,7 +320,7 @@ const EditorManager: EditorManager = {
   /**
    * Initializes a set of editors. This method will create editors based on various settings.
    * <br /><br />
-   * For information on basic usage of <code>init</code>, see: <a href="https://www.tiny.cloud/docs/general-configuration-guide/basic-setup/">Basic setup</a>.
+   * For information on basic usage of <code>init</code>, see: <a href="https://www.tiny.cloud/docs/tinymce/6/basic-setup/">Basic setup</a>.
    *
    * @method init
    * @param {Object} options Options object to be passed to each editor instance.
@@ -328,14 +333,14 @@ const EditorManager: EditorManager = {
    *
    * // Initializes a editor instance using the shorter version and with a promise
    * tinymce.init({
-   *    some_settings : 'some value'
-   * }).then(function(editors) {
-   *    ...
+   *   some_settings : 'some value'
+   * }).then((editors) => {
+   *   ...
    * });
    */
   init(options: RawEditorOptions) {
     const self: EditorManager = this;
-    let result;
+    let result: Editor[] | undefined;
 
     const invalidInlineTargets = Tools.makeMap(
       'area base basefont br col frame hr img input isindex link meta param embed source wbr track ' +
@@ -370,7 +375,7 @@ const EditorManager: EditorManager = {
       if (Env.browser.isIE() || Env.browser.isEdge()) {
         ErrorReporter.initError(
           'TinyMCE does not support the browser you are using. For a list of supported' +
-          ' browsers please see: https://www.tinymce.com/docs/get-started/system-requirements/'
+          ' browsers please see: https://www.tiny.cloud/docs/tinymce/6/support/#supportedwebbrowsers'
         );
         return [];
       } else if (isQuirksMode) {
@@ -388,13 +393,13 @@ const EditorManager: EditorManager = {
       }
     };
 
-    let provideResults = (editors) => {
+    let provideResults = (editors: Editor[]) => {
       result = editors;
     };
 
     const initEditors = () => {
       let initCount = 0;
-      const editors = [];
+      const editors: Editor[] = [];
       let targets: HTMLElement[];
 
       const createEditor = (id: string, options: RawEditorOptions, targetElm: HTMLElement) => {
@@ -458,22 +463,22 @@ const EditorManager: EditorManager = {
    * @return {tinymce.Editor/Array} Editor instance or an array of editor instances.
    * @example
    * // Adds an onclick event to an editor by id
-   * tinymce.get('mytextbox').on('click', function(e) {
-   *    ed.windowManager.alert('Hello world!');
+   * tinymce.get('mytextbox').on('click', (e) => {
+   *   ed.windowManager.alert('Hello world!');
    * });
    *
    * // Adds an onclick event to an editor by index
-   * tinymce.get(0).on('click', function(e) {
-   *    ed.windowManager.alert('Hello world!');
+   * tinymce.get(0).on('click', (e) => {
+   *   ed.windowManager.alert('Hello world!');
    * });
    *
    * // Adds an onclick event to an editor by id (longer version)
-   * tinymce.EditorManager.get('mytextbox').on('click', function(e) {
-   *    ed.windowManager.alert('Hello world!');
+   * tinymce.EditorManager.get('mytextbox').on('click', (e) => {
+   *   ed.windowManager.alert('Hello world!');
    * });
    */
   // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-  get(id?: number | string) {
+  get(id?: number | string): any {
     if (arguments.length === 0) {
       return editors.slice(0);
     } else if (Type.isString(id)) {
@@ -514,11 +519,11 @@ const EditorManager: EditorManager = {
     // to fire a bunch of activate/deactivate calls while initializing
     self.activeEditor = editor;
 
-    self.fire('AddEditor', { editor });
+    self.dispatch('AddEditor', { editor });
 
     if (!beforeUnloadDelegate) {
       beforeUnloadDelegate = (e) => {
-        const event = self.fire('BeforeUnload');
+        const event = self.dispatch('BeforeUnload');
         if (event.returnValue) {
           // browsers are all a little bit special about this: https://developer.mozilla.org/en-US/docs/Web/API/BeforeUnloadEvent
           e.preventDefault();
@@ -565,13 +570,13 @@ const EditorManager: EditorManager = {
    * @param {tinymce.Editor/String/Object} [selector] CSS selector or editor instance to remove.
    * @return {tinymce.Editor} The editor that got passed in will be return if it was found otherwise null.
    */
-  remove(selector?: string | Editor) {
+  remove(selector?: string | Editor): any {
     const self = this;
-    let i, editor;
+    let editor: Editor | null;
 
     // Remove all editors
     if (!selector) {
-      for (i = editors.length - 1; i >= 0; i--) {
+      for (let i = editors.length - 1; i >= 0; i--) {
         self.remove(editors[i]);
       }
 
@@ -600,7 +605,7 @@ const EditorManager: EditorManager = {
     }
 
     if (removeEditorFromList(editor)) {
-      self.fire('RemoveEditor', { editor });
+      self.dispatch('RemoveEditor', { editor });
     }
 
     if (editors.length === 0) {
@@ -620,29 +625,35 @@ const EditorManager: EditorManager = {
    * @method execCommand
    * @param {String} cmd Command to perform for example Bold.
    * @param {Boolean} ui Optional boolean state if a UI should be presented for the command or not.
-   * @param {String} value Optional value parameter like for example an URL to a link.
+   * @param {Object/String/Number/Boolean} value Optional value parameter like for example an URL to a link.
    * @return {Boolean} true/false if the command was executed or not.
    */
   execCommand(cmd, ui, value) {
-    const self = this, editor = self.get(value);
+    const self = this;
+    const editorId = Type.isObject(value) ? value.id ?? value.index : value;
 
     // Manager commands
     switch (cmd) {
-      case 'mceAddEditor':
-        if (!self.get(value)) {
-          new Editor(value, self.settings, self).render();
+      case 'mceAddEditor': {
+        if (!self.get(editorId)) {
+          const editorOptions = value.options;
+          new Editor(editorId, editorOptions, self).render();
         }
 
         return true;
+      }
 
-      case 'mceRemoveEditor':
+      case 'mceRemoveEditor': {
+        const editor = self.get(editorId);
         if (editor) {
           editor.remove();
         }
 
         return true;
+      }
 
-      case 'mceToggleEditor':
+      case 'mceToggleEditor': {
+        const editor = self.get(editorId);
         if (!editor) {
           self.execCommand('mceAddEditor', false, value);
           return true;
@@ -655,6 +666,7 @@ const EditorManager: EditorManager = {
         }
 
         return true;
+      }
     }
 
     // Run command on active editor
@@ -712,10 +724,10 @@ const EditorManager: EditorManager = {
 
     if (this.activeEditor !== editor) {
       if (activeEditor) {
-        activeEditor.fire('deactivate', { relatedTarget: editor });
+        activeEditor.dispatch('deactivate', { relatedTarget: editor });
       }
 
-      editor.fire('activate', { relatedTarget: activeEditor });
+      editor.dispatch('activate', { relatedTarget: activeEditor });
     }
 
     this.activeEditor = editor;

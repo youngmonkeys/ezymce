@@ -1,17 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { AddEventsBehaviour, AlloyEvents, Behaviour, GuiFactory, Highlighting, InlineView, ItemTypes, Menu, SystemEvents } from '@ephox/alloy';
+import { AddEventsBehaviour, AlloyEvents, Behaviour, GuiFactory, Highlighting, InlineView, ItemTypes, SystemEvents } from '@ephox/alloy';
 import { InlineContent } from '@ephox/bridge';
 import { Arr, Cell, Optional } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
+import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
 import Editor from 'tinymce/core/api/Editor';
-import { DOMUtils } from 'tinymce/core/api/PublicApi';
 import { AutocompleteLookupData } from 'tinymce/core/autocomplete/AutocompleteTypes';
 
 import { AutocompleterEditorEvents, AutocompleterUiApi } from './autocomplete/AutocompleteEditorEvents';
@@ -19,7 +12,7 @@ import * as AutocompleteTagReader from './autocomplete/AutocompleteTagReader';
 import { UiFactoryBackstageShared } from './backstage/Backstage';
 import ItemResponse from './ui/menus/item/ItemResponse';
 import { createPartialMenuWithAlloyItems } from './ui/menus/menu/MenuUtils';
-import { createAutocompleteItems, createMenuFrom, FocusMode } from './ui/menus/menu/SingleMenu';
+import { createAutocompleteItems, createInlineMenuFrom, FocusMode } from './ui/menus/menu/SingleMenu';
 
 const getAutocompleterRange = (dom: DOMUtils, initRange: Range): Optional<Range> => {
   return AutocompleteTagReader.detect(SugarElement.fromDom(initRange.startContainer)).map((elm) => {
@@ -29,7 +22,7 @@ const getAutocompleterRange = (dom: DOMUtils, initRange: Range): Optional<Range>
   });
 };
 
-const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared) => {
+const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared): void => {
   const processingAction = Cell<boolean>(false);
   const activeState = Cell<boolean>(false);
 
@@ -54,10 +47,17 @@ const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared) => 
   const isActive = activeState.get;
 
   const hideIfNecessary = () => {
-    if (isActive()) {
+    if (isMenuOpen()) {
       InlineView.hide(autocompleter);
     }
   };
+
+  const getMenu = () => InlineView.getContent(autocompleter).bind((tmenu) => {
+    // The autocompleter menu will be the first child component of the tiered menu.
+    // Unfortunately a memento can't be used to do this lookup because the component
+    // id is changed while generating the tiered menu.
+    return Arr.get(tmenu.components(), 0);
+  });
 
   const cancelIfNecessary = () => editor.execCommand('mceAutocompleterClose');
 
@@ -97,28 +97,32 @@ const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared) => 
     AutocompleteTagReader.findIn(SugarElement.fromDom(editor.getBody())).each((element) => {
       // Display the autocompleter menu
       const columns: InlineContent.ColumnTypes = Arr.findMap(lookupData, (ld) => Optional.from(ld.columns)).getOr(1);
-      InlineView.showAt(
+      InlineView.showMenuAt(
         autocompleter,
-        Menu.sketch(
-          createMenuFrom(
-            createPartialMenuWithAlloyItems('autocompleter-value', true, items, columns, 'normal'),
-            columns,
-            FocusMode.ContentFocus,
-            // Use the constant.
-            'normal'
-          )
-        ),
         {
           anchor: {
             type: 'node',
             root: SugarElement.fromDom(editor.getBody()),
             node: Optional.from(element)
           }
-        }
+        },
+        createInlineMenuFrom(
+          createPartialMenuWithAlloyItems(
+            'autocompleter-value',
+            true,
+            items,
+            columns,
+            { menuType: 'normal' }
+          ),
+          columns,
+          FocusMode.ContentFocus,
+          // Use the constant.
+          'normal'
+        )
       );
-
-      InlineView.getContent(autocompleter).each(Highlighting.highlightFirst);
     });
+
+    getMenu().each(Highlighting.highlightFirst);
   };
 
   const updateDisplay = (lookupData: AutocompleteLookupData[]) => {
@@ -152,7 +156,7 @@ const register = (editor: Editor, sharedBackstage: UiFactoryBackstageShared) => 
     isMenuOpen,
     isActive,
     isProcessingAction: processingAction.get,
-    getView: () => InlineView.getContent(autocompleter)
+    getMenu
   };
 
   AutocompleterEditorEvents.setup(autocompleterUiApi, editor);

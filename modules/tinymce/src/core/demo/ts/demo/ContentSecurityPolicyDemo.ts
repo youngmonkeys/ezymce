@@ -2,9 +2,11 @@
 import { Merger } from '@ephox/katamari';
 import { Css, SugarElement } from '@ephox/sugar';
 
-declare let tinymce: any;
+import { Editor, RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
 
-const makeSidebar = (ed, name: string, background: string, width: number) => {
+declare let tinymce: TinyMCE;
+
+const makeSidebar = (ed: Editor, name: string, background: string, width: number) => {
   ed.ui.registry.addSidebar(name, {
     icon: 'comment',
     tooltip: 'Tooltip for ' + name,
@@ -29,7 +31,7 @@ const makeSidebar = (ed, name: string, background: string, width: number) => {
   });
 };
 
-const settings = {
+const settings: RawEditorOptions = {
   skin_url: '../../../../js/tinymce/skins/ui/oxide',
   content_css: '../../../../js/tinymce/skins/content/default/content.css',
   images_upload_url: 'd',
@@ -83,23 +85,23 @@ const settings = {
     makeSidebar(ed, 'sidebar1', 'green', 200);
   },
   plugins: [
-    'autosave advlist autolink link image lists charmap preview anchor pagebreak',
-    'searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking',
-    'save table directionality emoticons template paste importcss codesample help noneditable'
+    'autosave', 'advlist', 'autolink', 'link', 'image', 'lists', 'charmap', 'preview', 'anchor', 'pagebreak',
+    'searchreplace', 'wordcount', 'visualblocks', 'visualchars', 'code', 'fullscreen', 'insertdatetime', 'media', 'nonbreaking',
+    'save', 'table', 'directionality', 'emoticons', 'template', 'importcss', 'codesample', 'help'
   ],
   // rtl_ui: true,
   add_unload_trigger: false,
   autosave_ask_before_unload: false,
-  toolbar: 'undo redo sidebar1 align fontsizeselect fontselect formatselect styleselect insertfile | styleselect | bold italic | alignleft aligncenter alignright alignjustify | ' +
+  toolbar: 'undo redo sidebar1 align fontsize fontfamily blocks styles insertfile | styles | bold italic | alignleft aligncenter alignright alignjustify | ' +
   'bullist numlist outdent indent | link image | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl | fullscreen',
 
   // Multiple toolbar array
-  // toolbar: ['undo redo sidebar1 align fontsizeselect insertfile | fontselect formatselect styleselect insertfile | styleselect | bold italic',
+  // toolbar: ['undo redo sidebar1 align fontsize insertfile | fontfamily blocks styles insertfile | styles | bold italic',
   // 'alignleft aligncenter alignright alignjustify | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl',
   // 'bullist numlist outdent indent | link image'],
 
   // Toolbar<n>
-  // toolbar1: 'undo redo sidebar1 align fontsizeselect insertfile | fontselect formatselect styleselect insertfile | styleselect | bold italic',
+  // toolbar1: 'undo redo sidebar1 align fontsize insertfile | fontfamily blocks styles insertfile | styles | bold italic',
   // toolbar2: 'alignleft aligncenter alignright alignjustify | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl',
   // toolbar3: 'bullist numlist outdent indent | link image',
 
@@ -109,7 +111,7 @@ const settings = {
   //     name: 'history', items: [ 'undo', 'redo' ]
   //   },
   //   {
-  //     name: 'styles', items: [ 'styleselect' ]
+  //     name: 'styles', items: [ 'styles' ]
   //   },
   //   {
   //     name: 'formatting', items: [ 'bold', 'italic']

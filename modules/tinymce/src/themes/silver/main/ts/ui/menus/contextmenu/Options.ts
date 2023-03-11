@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Obj, Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -42,7 +35,7 @@ const register = (editor: Editor): void => {
         return { valid: false, message: 'Must be false or a string.' };
       }
     },
-    default: 'link linkchecker image imagetools table spellchecker configurepermanentpen'
+    default: 'link linkchecker image editimage table spellchecker configurepermanentpen'
   });
 };
 

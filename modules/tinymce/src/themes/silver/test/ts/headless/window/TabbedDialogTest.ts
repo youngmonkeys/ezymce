@@ -9,10 +9,10 @@ import * as WindowManager from 'tinymce/themes/silver/ui/dialog/WindowManager';
 import * as TestExtras from '../../module/TestExtras';
 
 describe('headless.tinymce.themes.silver.window.TabbedDialogTest', () => {
-  const helpers = TestExtras.bddSetup();
+  const extrasHook = TestExtras.bddSetup();
   let windowManager: WindowManagerImpl;
   before(() => {
-    windowManager = WindowManager.setup(helpers.extras());
+    windowManager = WindowManager.setup(extrasHook.access().extras);
   });
 
   const assertFormContents = (label: string, tabview: SugarElement<HTMLElement>, f: ApproxStructure.Builder<StructAssert>) => {
@@ -71,13 +71,13 @@ describe('headless.tinymce.themes.silver.window.TabbedDialogTest', () => {
           type: 'custom',
           name: 'gotoBasic',
           text: '-> Basic',
-          disabled: false
+          enabled: true
         },
         {
           type: 'custom',
           name: 'gotoAdvanced',
           text: '-> Advanced',
-          disabled: false
+          enabled: true
         },
         {
           type: 'cancel',
@@ -110,8 +110,12 @@ describe('headless.tinymce.themes.silver.window.TabbedDialogTest', () => {
     }));
 
     Mouse.clickOn(dialog, 'button:contains("-> Advanced")');
-    assertFormContents('Clicking Advanced button (not tab)', tabview, (s, str, _arr) => s.element('textarea', {
-      value: str.is('Textarea value')
+    assertFormContents('Clicking Advanced button (not tab)', tabview, (s, str, _arr) => s.element('div', {
+      children: [
+        s.element('textarea', {
+          value: str.is('Textarea value')
+        })
+      ]
     }));
 
     Mouse.clickOn(dialog, 'button:contains("-> Basic")');

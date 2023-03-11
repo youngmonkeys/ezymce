@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
@@ -19,7 +12,7 @@ import * as Options from '../api/Options';
 import { generate, SelectorFormatItem } from './SelectorModel';
 
 type Filter = (value: string, imported?: boolean) => boolean;
-type SelectorConvertor = () => StyleFormat | undefined;
+type SelectorConvertor = (selector: string, group: Group | null) => StyleFormat | undefined;
 
 export interface UserDefinedGroup {
   readonly title: string;
@@ -27,7 +20,7 @@ export interface UserDefinedGroup {
   readonly selector_converter?: SelectorConvertor;
 }
 
-interface Group extends UserDefinedGroup {
+export interface Group extends UserDefinedGroup {
   readonly original: UserDefinedGroup;
   readonly selectors: Record<string, boolean>;
   readonly filter: Filter | undefined;
@@ -35,7 +28,7 @@ interface Group extends UserDefinedGroup {
 
 const internalEditorStyle = /^\.(?:ephox|tiny-pageembed|mce)(?:[.-]+\w+)+$/;
 
-const removeCacheSuffix = (url: string): string => {
+const removeCacheSuffix = (url: string | null): string | null => {
   const cacheSuffix = Env.cacheSuffix;
 
   if (Type.isString(url)) {
@@ -80,11 +73,12 @@ const getSelectors = (editor: Editor, doc: Document, fileFilter: Filter | undefi
   const contentCSSUrls: Record<string, boolean> = {};
 
   const append = (styleSheet: CSSStyleSheet, imported?: boolean) => {
-    let href = styleSheet.href, rules: CSSRuleList | undefined;
+    let href = styleSheet.href;
+    let rules: CSSRuleList | undefined;
 
     href = removeCacheSuffix(href);
 
-    if (!href || !fileFilter(href, imported) || isSkinContentCss(editor, href)) {
+    if (!href || fileFilter && !fileFilter(href, imported) || isSkinContentCss(editor, href)) {
       return;
     }
 
@@ -116,7 +110,7 @@ const getSelectors = (editor: Editor, doc: Document, fileFilter: Filter | undefi
   });
 
   if (!fileFilter) {
-    fileFilter = (href: string, imported: boolean) => {
+    fileFilter = (href: string, imported?: boolean) => {
       return imported || contentCSSUrls[href];
     };
   }
@@ -133,7 +127,7 @@ const getSelectors = (editor: Editor, doc: Document, fileFilter: Filter | undefi
 };
 
 const defaultConvertSelectorToFormat = (editor: Editor, selectorText: string): StyleFormat | undefined => {
-  let format;
+  let format: Record<string, any> = {};
 
   // Parse simple element.class1, .class1
   const selector = /^(?:([a-z0-9\-_]+))?(\.[a-z0-9_\-\.]+)$/i.exec(selectorText);
@@ -177,7 +171,7 @@ const defaultConvertSelectorToFormat = (editor: Editor, selectorText: string): S
     format.attributes = { class: classes };
   }
 
-  return format;
+  return format as StyleFormat;
 };
 
 const getGroupsBySelector = (groups: Group[], selector: string): Group[] => {
@@ -186,7 +180,7 @@ const getGroupsBySelector = (groups: Group[], selector: string): Group[] => {
   });
 };
 
-const compileUserDefinedGroups = (groups: UserDefinedGroup[]): Group[] => {
+const compileUserDefinedGroups = (groups: UserDefinedGroup[] | undefined): Group[] => {
   return Tools.map(groups, (group) => {
     return Tools.extend({}, group, {
       original: group,
@@ -196,16 +190,16 @@ const compileUserDefinedGroups = (groups: UserDefinedGroup[]): Group[] => {
   });
 };
 
-const isExclusiveMode = (editor: Editor, group: Group): boolean => {
+const isExclusiveMode = (editor: Editor, group: Group | null): group is null => {
   // Exclusive mode can only be disabled when there are groups allowing the same style to be present in multiple groups
   return group === null || Options.shouldImportExclusive(editor);
 };
 
-const isUniqueSelector = (editor: Editor, selector: string, group: Group, globallyUniqueSelectors: Record<string, boolean>): boolean => {
+const isUniqueSelector = (editor: Editor, selector: string, group: Group | null, globallyUniqueSelectors: Record<string, boolean>): boolean => {
   return !(isExclusiveMode(editor, group) ? selector in globallyUniqueSelectors : selector in group.selectors);
 };
 
-const markUniqueSelector = (editor: Editor, selector: string, group: Group, globallyUniqueSelectors: Record<string, boolean>): void => {
+const markUniqueSelector = (editor: Editor, selector: string, group: Group | null, globallyUniqueSelectors: Record<string, boolean>): void => {
   if (isExclusiveMode(editor, group)) {
     globallyUniqueSelectors[selector] = true;
   } else {
@@ -213,13 +207,14 @@ const markUniqueSelector = (editor: Editor, selector: string, group: Group, glob
   }
 };
 
-const convertSelectorToFormat = (editor: Editor, plugin: Plugin, selector: string, group: Group): StyleFormat | undefined => {
+const convertSelectorToFormat = (editor: Editor, plugin: Plugin, selector: string, group: Group | null): StyleFormat | undefined => {
   let selectorConverter: SelectorConvertor;
 
+  const converter = Options.getSelectorConverter(editor);
   if (group && group.selector_converter) {
     selectorConverter = group.selector_converter;
-  } else if (Options.getSelectorConverter(editor)) {
-    selectorConverter = Options.getSelectorConverter(editor);
+  } else if (converter) {
+    selectorConverter = converter;
   } else {
     selectorConverter = () => {
       return defaultConvertSelectorToFormat(editor, selector);
@@ -237,7 +232,7 @@ const setup = (editor: Editor): void => {
     const selectorFilter = compileFilter(Options.getSelectorFilter(editor));
     const groups = compileUserDefinedGroups(Options.getCssGroups(editor));
 
-    const processSelector = (selector: string, group: Group): SelectorFormatItem | null => {
+    const processSelector = (selector: string, group: Group | null): SelectorFormatItem | null => {
       if (isUniqueSelector(editor, selector, group, globallyUniqueSelectors)) {
         markUniqueSelector(editor, selector, group, globallyUniqueSelectors);
 
@@ -279,7 +274,7 @@ const setup = (editor: Editor): void => {
     });
 
     const items = model.toFormats();
-    editor.fire('addStyleModifications', {
+    editor.dispatch('addStyleModifications', {
       items,
       replace: !Options.shouldAppend(editor)
     });

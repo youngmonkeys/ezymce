@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Cell } from '@ephox/katamari';
 
 import Editor from '../api/Editor';
@@ -19,12 +12,14 @@ import * as HomeEndKeys from './HomeEndKeys';
 import * as InputKeys from './InputKeys';
 import * as PageUpDownKeys from './PageUpDownKeys';
 import * as SpaceKey from './SpaceKey';
+import * as TabKey from './TabKey';
 
-const setup = (editor: Editor): Cell<Text> => {
+const setup = (editor: Editor): Cell<Text | null> => {
   editor.addShortcut('Meta+P', '', 'mcePrint');
+  Autocompleter.setup(editor);
 
   if (Rtc.isRtc(editor)) {
-    return Cell(null);
+    return Cell<Text | null>(null);
   } else {
     const caret = BoundarySelection.setupSelectedState(editor);
 
@@ -34,9 +29,9 @@ const setup = (editor: Editor): Cell<Text> => {
     EnterKey.setup(editor);
     SpaceKey.setup(editor);
     InputKeys.setup(editor);
+    TabKey.setup(editor);
     HomeEndKeys.setup(editor, caret);
     PageUpDownKeys.setup(editor, caret);
-    Autocompleter.setup(editor);
 
     return caret;
   }

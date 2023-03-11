@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional } from '@ephox/katamari';
 import { Insert, SugarElement } from '@ephox/sugar';
 
@@ -16,6 +9,7 @@ import * as CaretUtils from '../caret/CaretUtils';
 import { CaretWalker, HDirection } from '../caret/CaretWalker';
 import * as LineWalker from '../caret/LineWalker';
 import * as NodeType from '../dom/NodeType';
+import { getEdgeCefPosition } from './CefUtils';
 import * as NavigationUtils from './NavigationUtils';
 
 const isContentEditableFalse = NodeType.isContentEditableFalse;
@@ -39,7 +33,7 @@ const exitPreBlock = (editor: Editor, direction: HDirection, range: Range): void
   const caretWalker = CaretWalker(editor.getBody());
   const getVisualCaretPosition = Fun.curry(CaretUtils.getVisualCaretPosition, direction === 1 ? caretWalker.next : caretWalker.prev);
 
-  if (range.collapsed && Options.hasForcedRootBlock(editor)) {
+  if (range.collapsed) {
     const pre = editor.dom.getParent(range.startContainer, 'PRE');
     if (!pre) {
       return;
@@ -98,8 +92,26 @@ const moveToLineEndPoint = (editor: Editor, forward: boolean): boolean => {
   return NavigationUtils.moveToLineEndPoint(editor, forward, isCefPosition);
 };
 
+const selectToEndPoint = (editor: Editor, forward: boolean): boolean =>
+  getEdgeCefPosition(editor, !forward)
+    .map((pos) => {
+      const rng = pos.toRange();
+      const curRng = editor.selection.getRng();
+      if (forward) {
+        rng.setStart(curRng.startContainer, curRng.startOffset);
+      } else {
+        rng.setEnd(curRng.endContainer, curRng.endOffset);
+      }
+      return rng;
+    })
+    .exists((rng) => {
+      NavigationUtils.moveToRange(editor, rng);
+      return true;
+    });
+
 export {
   moveH,
   moveV,
-  moveToLineEndPoint
+  moveToLineEndPoint,
+  selectToEndPoint
 };

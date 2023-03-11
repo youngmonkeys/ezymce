@@ -1,17 +1,9 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Cell } from '@ephox/katamari';
+import { Cell, Fun } from '@ephox/katamari';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
 import { SetContentEvent } from 'tinymce/core/api/EventTypes';
-import Delay from 'tinymce/core/api/util/Delay';
 import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 
 import * as Events from '../api/Events';
@@ -27,22 +19,6 @@ import * as Options from '../api/Options';
 const isFullscreen = (editor: Editor): boolean =>
   editor.plugins.fullscreen && editor.plugins.fullscreen.isFullscreen();
 
-/**
- * Calls the resize x times in 100ms intervals. We can't wait for load events since
- * the CSS files might load async.
- */
-const wait = (editor: Editor, oldSize: Cell<number>, times: number, interval: number, callback?: () => void): void => {
-  Delay.setEditorTimeout(editor, () => {
-    resize(editor, oldSize);
-
-    if (times--) {
-      wait(editor, oldSize, times, interval, callback);
-    } else if (callback) {
-      callback();
-    }
-  }, interval);
-};
-
 const toggleScrolling = (editor: Editor, state: boolean): void => {
   const body = editor.getBody();
   if (body) {
@@ -54,7 +30,7 @@ const toggleScrolling = (editor: Editor, state: boolean): void => {
 };
 
 const parseCssValueToInt = (dom: DOMUtils, elm: Element, name: string, computed: boolean): number => {
-  const value = parseInt(dom.getStyle(elm, name, computed), 10);
+  const value = parseInt(dom.getStyle(elm, name, computed) ?? '', 10);
   // The value maybe be an empty string, so in that case treat it as being 0
   return isNaN(value) ? 0 : value;
 };
@@ -74,7 +50,7 @@ const shouldScrollIntoView = (trigger: EditorEvent<unknown> | undefined) => {
 /**
  * This method gets executed each time the editor needs to resize.
  */
-const resize = (editor: Editor, oldSize: Cell<number>, trigger?: EditorEvent<unknown>): void => {
+const resize = (editor: Editor, oldSize: Cell<number>, trigger?: EditorEvent<unknown>, getExtraMarginBottom?: () => number): void => {
   const dom = editor.dom;
 
   const doc = editor.getDoc();
@@ -88,7 +64,8 @@ const resize = (editor: Editor, oldSize: Cell<number>, trigger?: EditorEvent<unk
   }
 
   const docEle = doc.documentElement;
-  const resizeBottomMargin = Options.getAutoResizeBottomMargin(editor);
+  const resizeBottomMargin = getExtraMarginBottom ? getExtraMarginBottom() : Options.getAutoResizeOverflowPadding(editor);
+
   const minHeight = Options.getMinHeight(editor) ?? editor.getElement().offsetHeight;
   let resizeHeight = minHeight;
 
@@ -143,13 +120,18 @@ const resize = (editor: Editor, oldSize: Cell<number>, trigger?: EditorEvent<unk
     // WebKit doesn't decrease the size of the body element until the iframe gets resized
     // So we need to continue to resize the iframe down until the size gets fixed
     if ((Env.browser.isSafari() || Env.browser.isChromium()) && deltaSize < 0) {
-      resize(editor, oldSize, trigger);
+      resize(editor, oldSize, trigger, getExtraMarginBottom);
     }
   }
 };
 
 const setup = (editor: Editor, oldSize: Cell<number>): void => {
-  editor.on('init', () => {
+  let getExtraMarginBottom = () => Options.getAutoResizeBottomMargin(editor);
+  let resizeCounter: number;
+  let sizeAfterFirstResize: number;
+
+  editor.on('init', (e) => {
+    resizeCounter = 0;
     const overflowPadding = Options.getAutoResizeOverflowPadding(editor);
     const dom = editor.dom;
 
@@ -158,27 +140,45 @@ const setup = (editor: Editor, oldSize: Cell<number>): void => {
       height: 'auto'
     });
 
-    dom.setStyles(editor.getBody(), {
-      'paddingLeft': overflowPadding,
-      'paddingRight': overflowPadding,
-      // IE & Edge have a min height of 150px by default on the body, so override that
-      'min-height': 0
-    });
+    if (Env.browser.isEdge() || Env.browser.isIE()) {
+      dom.setStyles(editor.getBody(), {
+        'paddingLeft': overflowPadding,
+        'paddingRight': overflowPadding,
+        // IE & Edge have a min height of 150px by default on the body, so override that
+        'min-height': 0
+      });
+    } else {
+      dom.setStyles(editor.getBody(), {
+        paddingLeft: overflowPadding,
+        paddingRight: overflowPadding
+      });
+    }
+
+    resize(editor, oldSize, e, getExtraMarginBottom);
+    resizeCounter += 1;
   });
 
   editor.on('NodeChange SetContent keyup FullscreenStateChanged ResizeContent', (e) => {
-    resize(editor, oldSize, e);
+    if (resizeCounter === 1) {
+      sizeAfterFirstResize = editor.getContainer().offsetHeight;
+      resize(editor, oldSize, e, getExtraMarginBottom);
+      resizeCounter += 1;
+    } else if (resizeCounter === 2) {
+      // After the first check, this code checks if the editor's container is resized again, if so it means that the resize is in a loop
+      // in this case, the CSS is changed to let the document and body adapt to the height of the content
+      const isLooping = sizeAfterFirstResize < editor.getContainer().offsetHeight;
+      if (isLooping) {
+        const dom = editor.dom;
+        const doc = editor.getDoc();
+        dom.setStyles(doc.documentElement, { 'min-height': 0 });
+        dom.setStyles(editor.getBody(), { 'min-height': 'inherit' });
+      }
+      getExtraMarginBottom = isLooping ? Fun.constant(0) : getExtraMarginBottom;
+      resizeCounter += 1;
+    } else {
+      resize(editor, oldSize, e, getExtraMarginBottom);
+    }
   });
-
-  if (Options.shouldAutoResizeOnInit(editor)) {
-    editor.on('init', () => {
-      // Hit it 20 times in 100 ms intervals
-      wait(editor, oldSize, 20, 100, () => {
-        // Hit it 5 times in 1 sec intervals
-        wait(editor, oldSize, 5, 1000);
-      });
-    });
-  }
 };
 
 export {

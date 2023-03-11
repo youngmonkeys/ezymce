@@ -9,13 +9,14 @@ import { assert } from 'chai';
 import { renderColorPicker } from 'tinymce/themes/silver/ui/dialog/ColorPicker';
 
 import * as RepresentingUtils from '../../../module/RepresentingUtils';
+import TestProviders from '../../../module/TestProviders';
 
 describe('headless.tinymce.themes.silver.components.colorpicker.ColorPickerTest', () => {
   const hook = TestHelpers.GuiSetup.bddSetup((_store, _doc, _body) => GuiFactory.build(
     renderColorPicker({
       label: Optional.some('ColorPicker label'),
       name: 'col1'
-    })
+    }, TestProviders, Optional.none())
   ));
 
   const fireEvent = (elem: SugarElement<Node>, event: string) => {
@@ -52,10 +53,18 @@ describe('headless.tinymce.themes.silver.components.colorpicker.ColorPickerTest'
     return Waiter.pTryUntil('Assert hue of palette matches expected', () => {
       const canvas = UiFinder.findIn<HTMLCanvasElement>(component.element, 'canvas').getOrDie();
       // get 1px square from top right of palette canvas
-      const imageData = canvas.dom.getContext('2d').getImageData(100, 0, 1, 1).data;
+      const canvasContext = canvas.dom.getContext('2d') as CanvasRenderingContext2D;
+      const imageData = canvasContext.getImageData(100, 0, 1, 1).data;
       const rgb = { red: imageData[0], green: imageData[1], blue: imageData[2], alpha: (imageData[3] / 255) * 100 };
       const hsv = HsvColour.fromRgb(rgb);
       assert.equal(hsv.hue, expected);
+    });
+  };
+
+  const pAssertPreviewBgColor = (component: AlloyComponent, expected: string) => {
+    return Waiter.pTryUntil('Assert preview background color matches expected', () => {
+      const preview = UiFinder.findIn<HTMLCanvasElement>(component.element, '.tox-rgba-preview').getOrDie();
+      assert.equal(preview.dom.style.backgroundColor, expected);
     });
   };
 
@@ -126,5 +135,31 @@ describe('headless.tinymce.themes.silver.components.colorpicker.ColorPickerTest'
       component,
       '#00EEDD'
     );
+  });
+
+  it('TINY-9457: Updates preview when hex field value prefixed with #', async () => {
+    const component = hook.component();
+    RepresentingUtils.setComposedValue(
+      component,
+      '#000000'
+    );
+
+    await pAssertColour(component, '0', 'R');
+    await pAssertColour(component, '0', 'G');
+    await pAssertColour(component, '0', 'B');
+
+    setHexValue(component, '#00EEDD');
+
+    await pAssertColour(component, '0', 'R');
+    await pAssertColour(component, '238', 'G');
+    await pAssertColour(component, '221', 'B');
+    await pAssertPaletteHue(component, 176);
+    await pAssertPreviewBgColor(component, 'rgb(0, 238, 221)');
+
+    RepresentingUtils.assertComposedValue(
+      component,
+      '#00EEDD'
+    );
+
   });
 });

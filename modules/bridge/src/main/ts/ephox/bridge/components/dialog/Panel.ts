@@ -1,6 +1,7 @@
 import { FieldPresence, FieldSchema, StructureSchema } from '@ephox/boulder';
 import { Result } from '@ephox/katamari';
 
+import * as ComponentSchema from '../../core/ComponentSchema';
 import { alertBannerSchema } from './AlertBanner';
 import { createBarFields } from './Bar';
 import { BodyComponent, BodyComponentSpec } from './BodyComponent';
@@ -14,7 +15,7 @@ import { dropZoneSchema } from './Dropzone';
 import { createGridFields } from './Grid';
 import { htmlPanelSchema } from './HtmlPanel';
 import { iframeSchema } from './Iframe';
-import { imageToolsSchema } from './ImageTools';
+import { imagePreviewSchema } from './ImagePreview';
 import { inputSchema } from './Input';
 import { createLabelFields } from './Label';
 import { listBoxSchema } from './ListBox';
@@ -23,6 +24,7 @@ import { sizeInputSchema } from './SizeInput';
 import { sliderSchema } from './Slider';
 import { tableSchema } from './Table';
 import { textAreaSchema } from './Textarea';
+import { treeSchema } from './Tree';
 import { urlInputSchema } from './UrlInput';
 
 export interface PanelSpec {
@@ -68,16 +70,17 @@ export const itemSchema = StructureSchema.valueThunkOf(
     urlinput: urlInputSchema,
     customeditor: customEditorSchema,
     htmlpanel: htmlPanelSchema,
-    imagetools: imageToolsSchema,
+    imagepreview: imagePreviewSchema,
     collection: collectionSchema,
     label: StructureSchema.objOf(createLabelFields(createItemsField('label'))),
     table: tableSchema,
+    tree: treeSchema,
     panel: panelSchema
   })
 );
 
 const panelFields = [
-  FieldSchema.requiredString('type'),
+  ComponentSchema.type,
   FieldSchema.defaulted('classes', []),
   FieldSchema.requiredArrayOf('items', itemSchema)
 ];

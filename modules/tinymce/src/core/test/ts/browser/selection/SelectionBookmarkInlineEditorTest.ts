@@ -17,7 +17,9 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
 
   const removeTestDiv = () => {
     const input = document.querySelector('#' + testDivId);
-    input.parentNode.removeChild(input);
+    if (input) {
+      input.parentNode?.removeChild(input);
+    }
   };
 
   const addTestDiv = () => {
@@ -35,11 +37,11 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
   };
 
   const focusDiv = () => {
-    const input = document.querySelector<HTMLDivElement>('#' + testDivId);
+    const input = document.querySelector('#' + testDivId) as HTMLDivElement;
     input.focus();
   };
 
-  const assertPath = (label: string, root: SugarElement, expPath: number[], expOffset: number, actElement: Node, actOffset: number) => {
+  const assertPath = (label: string, root: SugarElement<Node>, expPath: number[], expOffset: number, actElement: Node, actOffset: number) => {
     const expected = Cursors.calculateOne(root, expPath);
     const message = () => {
       const actual = SugarElement.fromDom(actElement);
@@ -60,16 +62,21 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
   before(() => addTestDiv());
   after(() => removeTestDiv());
 
+  it('assert bookmark is updated in response to `setRng`', () => {
+    const editor = hook.editor();
+    editor.resetContent('<p>a</p><p>b</p>');
+
+    TinySelections.setRawSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
+    TinySelections.setSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1, false); // Ensure node change doesn't fire
+    assertBookmark(editor, [ 1, 0 ], 1, [ 1, 0 ], 1);
+  });
+
   it('assert selection after no nodechanged, should not restore', () => {
     const editor = hook.editor();
-    editor.setContent('<p>a</p><p>b</p>');
-    // In FireFox blurring the editor adds an undo level that triggers a nodechange that creates a bookmark,
-    // so by adding an undo level first we keep it from adding a bookmark because the undo manager
-    // does not add a new undolevel if it is the same as the previous level.
-    editor.undoManager.add();
+    editor.resetContent('<p>a</p><p>b</p>');
 
     TinySelections.setSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
-    TinySelections.setSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1, false); // Ensure node change doesn't fire
+    TinySelections.setRawSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1);
     assertBookmark(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
   });
 
@@ -88,7 +95,7 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
 
     TinySelections.setSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
     TinySelections.setSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1, false);
-    editor.fire('keyup', { } as KeyboardEvent);
+    editor.dispatch('keyup', { } as KeyboardEvent);
     assertBookmark(editor, [ 1, 0 ], 1, [ 1, 0 ], 1);
   });
 
@@ -98,7 +105,7 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
 
     TinySelections.setSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
     TinySelections.setSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1, false);
-    editor.fire('mouseup', { } as MouseEvent);
+    editor.dispatch('mouseup', { } as MouseEvent);
     return pWaitForBookmark(editor, [ 1, 0 ], 1, [ 1, 0 ], 1);
   });
 
@@ -108,7 +115,7 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
 
     TinySelections.setSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 0);
     TinySelections.setSelection(editor, [ 1, 0 ], 1, [ 1, 0 ], 1, false);
-    editor.fire('touchend', { } as TouchEvent);
+    editor.dispatch('touchend', { } as TouchEvent);
     return pWaitForBookmark(editor, [ 1, 0 ], 1, [ 1, 0 ], 1);
   });
 
@@ -116,7 +123,7 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
     const editor = hook.editor();
     editor.setContent('<p>ab</p>');
     TinySelections.setSelection(editor, [ 0, 0 ], 0, [ 0, 0 ], 1, false);
-    DOMUtils.DOM.fire(document, 'mouseup');
+    DOMUtils.DOM.dispatch(document, 'mouseup');
     return pWaitForBookmark(editor, [ 0, 0 ], 0, [ 0, 0 ], 1);
   });
 
@@ -124,7 +131,7 @@ describe('browser.tinymce.core.selection.SelectionBookmarkInlineEditorTest', () 
     const editor = hook.editor();
     const modifyRange = (e: EditorEvent<{ range: Range }>) => {
       const newRng = document.createRange();
-      newRng.selectNodeContents(editor.getBody().lastChild);
+      newRng.selectNodeContents(editor.getBody().lastChild as HTMLParagraphElement);
       e.range = newRng;
     };
 

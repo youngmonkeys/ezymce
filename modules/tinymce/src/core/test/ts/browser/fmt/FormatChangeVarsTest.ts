@@ -1,7 +1,7 @@
 import { Waiter } from '@ephox/agar';
 import { after, before, beforeEach, context, describe, it } from '@ephox/bedrock-client';
 import { Singleton } from '@ephox/katamari';
-import { TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -11,10 +11,10 @@ describe('browser.tinymce.core.fmt.FormatChangeVarsTest', () => {
     base_url: '/project/tinymce/js/tinymce'
   }, []);
 
-  const events = {
-    general: [] as boolean[],
-    helvetica: [] as boolean[],
-    comicSans: [] as boolean[]
+  const events: Record<string, boolean[]> = {
+    general: [],
+    helvetica: [],
+    comicSans: []
   };
 
   const generalCleanup = Singleton.unbindable();

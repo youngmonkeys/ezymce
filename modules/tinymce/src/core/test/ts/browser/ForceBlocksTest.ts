@@ -1,8 +1,10 @@
-import { describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyHooks } from '@ephox/wrap-mcagar';
+import { context, describe, it } from '@ephox/bedrock-client';
+import { Arr } from '@ephox/katamari';
+import { LegacyUnit, TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import * as TransparentElements from 'tinymce/core/content/TransparentElements';
 
 import * as HtmlUtils from '../module/test/HtmlUtils';
 
@@ -11,20 +13,19 @@ describe('browser.tinymce.core.ForceBlocksTest', () => {
     entities: 'raw',
     indent: false,
     base_url: '/project/tinymce/js/tinymce'
-  }, []);
+  }, [], true);
 
   const pressArrowKey = (editor: Editor) => {
     const dom = editor.dom, target = editor.selection.getNode();
     const evt = { keyCode: 37 };
 
-    dom.fire(target, 'keydown', evt);
-    dom.fire(target, 'keypress', evt);
-    dom.fire(target, 'keyup', evt);
+    dom.dispatch(target, 'keydown', evt);
+    dom.dispatch(target, 'keypress', evt);
+    dom.dispatch(target, 'keyup', evt);
   };
 
   it('Wrap single root text node in P', () => {
     const editor = hook.editor();
-    editor.focus();
     editor.getBody().innerHTML = 'abcd';
     LegacyUnit.setSelection(editor, 'body', 2);
     pressArrowKey(editor);
@@ -38,7 +39,7 @@ describe('browser.tinymce.core.ForceBlocksTest', () => {
     editor.getBody().innerHTML = 'abcd';
     LegacyUnit.setSelection(editor, 'body', 2);
     pressArrowKey(editor);
-    assert.equal(editor.getContent(), '<p class="class1">abcd</p>');
+    TinyAssertions.assertContent(editor, '<p class="class1">abcd</p>');
     assert.equal(editor.selection.getNode().nodeName, 'P');
     editor.options.unset('forced_root_block_attrs');
   });
@@ -106,6 +107,8 @@ describe('browser.tinymce.core.ForceBlocksTest', () => {
     assert.equal(HtmlUtils.cleanHtml(body.innerHTML), '<div>abcd</div><div>abcd</div>');
     assert.equal(editor.selection.getNode().nodeName, 'DIV');
     assert.lengthOf(body.childNodes, 2);
+
+    editor.options.unset('forced_root_block');
   });
 
   it('Do not wrap bookmark spans', () => {
@@ -114,5 +117,33 @@ describe('browser.tinymce.core.ForceBlocksTest', () => {
     LegacyUnit.setSelection(editor, 'body', 0);
     pressArrowKey(editor);
     assert.equal(HtmlUtils.cleanHtml(editor.getBody().innerHTML), '<span data-mce-type="bookmark">a</span>');
+  });
+
+  context('Transparent elements', () => {
+    it('TINY-9172: Do not wrap root level transparent elements if they blocks inside', () => {
+      const editor = hook.editor();
+      const transparentElements = TransparentElements.elementNames(editor.schema.getTransparentElements());
+      const transparentElementsHtml = Arr.map(transparentElements, (name) => `<${name} data-mce-block="true"><p>text</p></${name}>`).join('');
+      const innerHtml = 'text' + transparentElementsHtml;
+      const expectedInnerHtml = '<p>text</p>' + transparentElementsHtml;
+
+      editor.getBody().innerHTML = innerHtml;
+      TinySelections.setCursor(editor, [ 0 ], 0);
+      pressArrowKey(editor);
+      assert.equal(HtmlUtils.cleanHtml(editor.getBody().innerHTML), expectedInnerHtml);
+    });
+
+    it('TINY-9172: Wrap root level transparent elements if they do not have blocks inside', () => {
+      const editor = hook.editor();
+      const transparentElements = TransparentElements.elementNames(editor.schema.getTransparentElements());
+      const transparentElementsHtml = Arr.map(transparentElements, (name) => `<${name}>text</${name}>`).join('');
+      const innerHtml = 'text' + transparentElementsHtml;
+      const expectedInnerHtml = `<p>text${transparentElementsHtml}</p>`;
+
+      editor.getBody().innerHTML = innerHtml;
+      TinySelections.setCursor(editor, [ 0 ], 0);
+      pressArrowKey(editor);
+      assert.equal(HtmlUtils.cleanHtml(editor.getBody().innerHTML), expectedInnerHtml);
+    });
   });
 });

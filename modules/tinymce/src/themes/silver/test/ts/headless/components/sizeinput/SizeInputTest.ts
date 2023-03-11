@@ -15,7 +15,7 @@ describe('headless.tinymce.themes.silver.components.sizeinput.SizeInputTest', ()
       name: 'dimensions',
       label: Optional.some('size'),
       constrain: true,
-      disabled: false
+      enabled: true
     }, TestProviders)
   ));
 
@@ -115,6 +115,8 @@ describe('headless.tinymce.themes.silver.components.sizeinput.SizeInputTest', ()
   it('Check adjusting sizes when not constraining proportions ', () => {
     const doc = hook.root();
     const component = hook.component();
+    assertLocked(component, true);
+    setDimensions(component, '100px', '100px');
     // toggle off the lock
     Mouse.clickOn(component.element, 'button.tox-lock');
     assertLocked(component, false);

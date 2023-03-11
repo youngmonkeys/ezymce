@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { AddEventsBehaviour, AlloyComponent, AlloyEvents, Behaviour, GuiFactory, InlineView, Sandboxing, SystemEvents } from '@ephox/alloy';
 import { Menu } from '@ephox/bridge';
 import { Arr, Fun, Obj, Result, Strings, Type } from '@ephox/katamari';
@@ -12,6 +5,7 @@ import { PlatformDetection } from '@ephox/sand';
 import { SelectorExists, SugarElement } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
+import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 import { UiFactoryBackstage } from 'tinymce/themes/silver/backstage/Backstage';
 
 import { AnchorType } from './Coords';
@@ -31,7 +25,7 @@ const makeContextItem = (item: string | Menu.ContextMenuItem | Menu.SeparatorMen
   const commonMenuItem = (item: Menu.ContextMenuItem | Menu.ContextSubMenu) => ({
     text: item.text,
     icon: item.icon,
-    disabled: item.disabled,
+    enabled: item.enabled,
     shortcut: item.shortcut,
   });
 
@@ -56,11 +50,12 @@ const makeContextItem = (item: string | Menu.ContextMenuItem | Menu.SeparatorMen
         };
       default:
         // case 'item', or anything else really
+        const commonItem = item as Menu.ContextMenuItem;
         return {
           type: 'menuitem',
-          ...commonMenuItem(item),
+          ...commonMenuItem(commonItem),
           // disconnect the function from the menu item API bridge defines
-          onAction: Fun.noarg(item.onAction)
+          onAction: Fun.noarg(commonItem.onAction)
         };
     }
   }
@@ -96,7 +91,7 @@ const generateContextMenu = (contextMenus: Record<string, Menu.ContextMenuApi>, 
         return acc;
       }
     }).getOrThunk(() => acc.concat([ name ]));
-  }, []);
+  }, [] as MenuItem[]);
 
   // Strip off any trailing separator
   if (sections.length > 0 && isSeparator(sections[sections.length - 1])) {
@@ -106,20 +101,24 @@ const generateContextMenu = (contextMenus: Record<string, Menu.ContextMenuApi>, 
   return sections;
 };
 
-const isNativeOverrideKeyEvent = (editor: Editor, e: PointerEvent) => e.ctrlKey && !Options.shouldNeverUseNative(editor);
+const isNativeOverrideKeyEvent = (editor: Editor, e: PointerEvent | TouchEvent): boolean =>
+  e.ctrlKey && !Options.shouldNeverUseNative(editor);
 
-export const isTriggeredByKeyboard = (editor: Editor, e: PointerEvent) =>
+const isTouchEvent = (e: PointerEvent | TouchEvent): e is TouchEvent =>
+  e.type === 'longpress' || Obj.has(e as TouchEvent, 'touches');
+
+export const isTriggeredByKeyboard = (editor: Editor, e: PointerEvent | TouchEvent): boolean =>
   // Different browsers trigger the context menu from keyboards differently, so need to check various different things here.
   // If a longpress touch event, always treat it as a pointer event
   // Chrome: button = 0, pointerType = undefined & target = the selection range node
   // Firefox: button = 0, pointerType = undefined & target = body
   // Safari: N/A (Mac's don't expose a contextmenu keyboard shortcut)
-  e.type !== 'longpress' && (e.button !== 2 || e.target === editor.getBody() && e.pointerType === '');
+  !isTouchEvent(e) && (e.button !== 2 || e.target === editor.getBody() && e.pointerType === '');
 
-const getSelectedElement = (editor: Editor, e: PointerEvent) =>
+const getSelectedElement = (editor: Editor, e: PointerEvent | TouchEvent): Element =>
   isTriggeredByKeyboard(editor, e) ? editor.selection.getStart(true) : e.target as Element;
 
-const getAnchorType = (editor: Editor, e: PointerEvent): AnchorType => {
+const getAnchorType = (editor: Editor, e: PointerEvent | TouchEvent): AnchorType => {
   const selector = Options.getAvoidOverlapSelector(editor);
   const anchorType = isTriggeredByKeyboard(editor, e) ? 'selection' : 'point';
   if (Strings.isNotEmpty(selector)) {
@@ -131,7 +130,7 @@ const getAnchorType = (editor: Editor, e: PointerEvent): AnchorType => {
   }
 };
 
-export const setup = (editor: Editor, lazySink: () => Result<AlloyComponent, Error>, backstage: UiFactoryBackstage) => {
+export const setup = (editor: Editor, lazySink: () => Result<AlloyComponent, string>, backstage: UiFactoryBackstage): void => {
   const detection = PlatformDetection.detect();
   const isTouch = detection.deviceType.isTouch;
 
@@ -156,9 +155,9 @@ export const setup = (editor: Editor, lazySink: () => Result<AlloyComponent, Err
     })
   );
 
-  const hideContextMenu = (_e) => InlineView.hide(contextmenu);
+  const hideContextMenu = () => InlineView.hide(contextmenu);
 
-  const showContextMenu = (e) => {
+  const showContextMenu = (e: EditorEvent<PointerEvent | TouchEvent>) => {
     // Prevent the default if we should never use native
     if (Options.shouldNeverUseNative(editor)) {
       e.preventDefault();
@@ -180,7 +179,7 @@ export const setup = (editor: Editor, lazySink: () => Result<AlloyComponent, Err
     };
 
     const initAndShow = isTouch() ? MobileContextMenu.initAndShow : DesktopContextMenu.initAndShow;
-    initAndShow(editor, e, buildMenu, backstage, contextmenu, anchorType);
+    initAndShow(editor, e as any, buildMenu, backstage, contextmenu, anchorType);
   };
 
   editor.on('init', () => {

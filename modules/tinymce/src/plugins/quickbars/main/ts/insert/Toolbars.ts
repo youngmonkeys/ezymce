@@ -1,12 +1,5 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun } from '@ephox/katamari';
-import { PredicateFind, SelectorFind, SugarElement, SugarNode } from '@ephox/sugar';
+import { Attribute, PredicateExists, SelectorFind, SugarElement, SugarNode } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
 
@@ -20,9 +13,12 @@ const addToEditor = (editor: Editor): void => {
         const sugarNode = SugarElement.fromDom(node);
         const textBlockElementsMap = editor.schema.getTextBlockElements();
         const isRoot = (elem: SugarElement<Node>) => elem.dom === editor.getBody();
-        return SelectorFind.closest(sugarNode, 'table', isRoot).fold(
-          () => PredicateFind.closest(sugarNode, (elem) =>
-            SugarNode.name(elem) in textBlockElementsMap && editor.dom.isEmpty(elem.dom), isRoot).isSome(),
+        return !Attribute.has(sugarNode, 'data-mce-bogus') && SelectorFind.closest(sugarNode, 'table,[data-mce-bogus="all"]', isRoot).fold(
+          () => PredicateExists.closest(
+            sugarNode,
+            (elem) => SugarNode.name(elem) in textBlockElementsMap && editor.dom.isEmpty(elem.dom),
+            isRoot
+          ),
           Fun.never
         );
       },

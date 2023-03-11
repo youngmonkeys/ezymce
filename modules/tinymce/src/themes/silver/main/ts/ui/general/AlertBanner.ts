@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { AlloyTriggers, Behaviour, Button, Container, SketchSpec } from '@ephox/alloy';
 import { Dialog } from '@ephox/bridge';
 
@@ -16,7 +9,7 @@ import * as Icons from '../icons/Icons';
 type AlertBannerSpec = Omit<Dialog.AlertBanner, 'type'>;
 
 export interface AlertBannerWrapper extends AlertBannerSpec {
-  iconTooltip: string;
+  readonly iconTooltip?: string;
 }
 
 export const renderAlertBanner = (spec: AlertBannerWrapper, providersBackstage: UiFactoryBackstageProviders): SketchSpec =>

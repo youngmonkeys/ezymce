@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun, Obj, Optional, Optionals, Type } from '@ephox/katamari';
 import { SelectorFind, SugarBody, SugarElement, SugarShadowDom } from '@ephox/sugar';
 
@@ -30,12 +23,12 @@ export enum ToolbarLocation {
 }
 
 const option: {
-  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K] | undefined;
+  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K];
   <T>(name: string): (editor: Editor) => T | undefined;
 } = (name: string) => (editor: Editor) =>
   editor.options.get(name);
 
-const wrapOptional = <T>(fn: (editor: Editor) => T) => (editor: Editor): Optional<T> =>
+const wrapOptional = <T>(fn: (editor: Editor) => T) => (editor: Editor): Optional<NonNullable<T>> =>
   Optional.from(fn(editor));
 
 const register = (editor: Editor): void => {
@@ -57,7 +50,7 @@ const register = (editor: Editor): void => {
 
   registerOption('height', {
     processor: stringOrNumberProcessor,
-    default: Math.max(editor.getElement().offsetHeight, 200)
+    default: Math.max(editor.getElement().offsetHeight, 400)
   });
 
   registerOption('width', {
@@ -66,7 +59,8 @@ const register = (editor: Editor): void => {
   });
 
   registerOption('min_height', {
-    processor: 'number'
+    processor: 'number',
+    default: 100
   });
 
   registerOption('min_width', {
@@ -95,12 +89,12 @@ const register = (editor: Editor): void => {
     default: false
   });
 
-  registerOption('lineheight_formats', {
+  registerOption('line_height_formats', {
     processor: 'string',
     default: '1 1.1 1.2 1.3 1.4 1.5 2'
   });
 
-  registerOption('font_formats', {
+  registerOption('font_family_formats', {
     processor: 'string',
     default: 'Andale Mono=andale mono,monospace;' +
       'Arial=arial,helvetica,sans-serif;' +
@@ -121,9 +115,14 @@ const register = (editor: Editor): void => {
       'Wingdings=wingdings,zapf dingbats'
   });
 
-  registerOption('fontsize_formats', {
+  registerOption('font_size_formats', {
     processor: 'string',
     default: '8pt 10pt 12pt 14pt 18pt 24pt 36pt'
+  });
+
+  registerOption('font_size_input_default_unit', {
+    processor: 'string',
+    default: 'pt'
   });
 
   registerOption('block_formats', {
@@ -216,6 +215,11 @@ const register = (editor: Editor): void => {
     processor: 'object'
   });
 
+  registerOption('ui_mode', {
+    processor: 'string',
+    default: 'combined'
+  });
+
   registerOption('file_picker_callback', {
     processor: 'function'
   });
@@ -263,11 +267,19 @@ const register = (editor: Editor): void => {
     default: true
   });
 
+  registerOption('promotion', {
+    processor: 'boolean',
+    default: true
+  });
+
   registerOption('resize', {
     processor: (value) => value === 'both' || Type.isBoolean(value),
-    // TODO: TINY-8288 - This should be set to `true` once the issue with the theme rendering too early is resolved
     // Editor resize doesn't work on touch devices at this stage
-    default: !Env.deviceType.isTouch() && !editor.hasPlugin('autoresize')
+    default: !Env.deviceType.isTouch()
+  });
+
+  registerOption('sidebar_show', {
+    processor: 'string'
   });
 };
 
@@ -294,6 +306,7 @@ const getMenubar = option('menubar');
 const getToolbar = option('toolbar');
 const getFilePickerCallback = option('file_picker_callback');
 const getFilePickerValidatorHandler = option('file_picker_validator_handler');
+const getFontSizeInputDefaultUnit = option('font_size_input_default_unit');
 const getFilePickerTypes = option('file_picker_types');
 const useTypeaheadUrls = option('typeahead_urls');
 const getAnchorTop = option('anchor_top');
@@ -303,6 +316,9 @@ const useStatusBar = option('statusbar');
 const useElementPath = option('elementpath');
 const useBranding = option('branding');
 const getResize = option('resize');
+const getPasteAsText = option('paste_as_text');
+const getSidebarShow = option('sidebar_show');
+const promotionEnabled = option('promotion');
 
 const isSkinDisabled = (editor: Editor): boolean =>
   editor.options.get('skin') === false;
@@ -326,7 +342,7 @@ const getSkinUrl = (editor: Editor): string | undefined => {
 };
 
 const getLineHeightFormats = (editor: Editor): string[] =>
-  editor.options.get('lineheight_formats').split(' ');
+  editor.options.get('line_height_formats').split(' ');
 
 const isToolbarEnabled = (editor: Editor): boolean => {
   const toolbar = getToolbar(editor);
@@ -362,7 +378,7 @@ const fixedContainerTarget = (editor: Editor): Optional<SugarElement> => {
     return Optional.none();
   }
 
-  const selector = fixedContainerSelector(editor);
+  const selector = fixedContainerSelector(editor) ?? '';
   if (selector.length > 0) {
     // If we have a valid selector
     return SelectorFind.descendant(SugarBody.body(), selector);
@@ -395,6 +411,9 @@ const isStickyToolbar = (editor: Editor): boolean => {
   return (isStickyToolbar || editor.inline) && !useFixedContainer(editor) && !isDistractionFree(editor);
 };
 
+const isSplitUiMode = (editor: Editor): boolean =>
+  !useFixedContainer(editor) && editor.options.get('ui_mode') === 'split';
+
 const getMenus = (editor: Editor): Record<string, { title: string; items: string }> => {
   const menu = editor.options.get('menu');
   return Obj.map(menu, (menu) => ({ ...menu, items: menu.items }));
@@ -424,6 +443,7 @@ export {
   getMultipleToolbarsOption,
   getUiContainer,
   useFixedContainer,
+  isSplitUiMode,
   getToolbarMode,
   isDraggableModal,
   isDistractionFree,
@@ -441,8 +461,12 @@ export {
   getAnchorTop,
   getAnchorBottom,
   getFilePickerValidatorHandler,
+  getFontSizeInputDefaultUnit,
   useStatusBar,
   useElementPath,
+  promotionEnabled,
   useBranding,
-  getResize
+  getResize,
+  getPasteAsText,
+  getSidebarShow
 };

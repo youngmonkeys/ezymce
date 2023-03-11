@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 import { Toolbar } from 'tinymce/core/api/ui/Ui';
 
@@ -12,10 +5,10 @@ import { onActionExecCommand, onSetupEvent } from './ControlUtils';
 
 const onSetupOutdentState = (editor: Editor) =>
   onSetupEvent(editor, 'NodeChange', (api: Toolbar.ToolbarButtonInstanceApi) => {
-    api.setDisabled(!editor.queryCommandState('outdent'));
+    api.setEnabled(editor.queryCommandState('outdent'));
   });
 
-const registerButtons = (editor: Editor) => {
+const registerButtons = (editor: Editor): void => {
   editor.ui.registry.addButton('outdent', {
     tooltip: 'Decrease indent',
     icon: 'outdent',
@@ -30,7 +23,7 @@ const registerButtons = (editor: Editor) => {
   });
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
   registerButtons(editor);
 };
 

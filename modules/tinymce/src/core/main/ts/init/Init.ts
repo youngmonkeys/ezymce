@@ -1,19 +1,14 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Arr, Fun, Obj, Optional, Type } from '@ephox/katamari';
 
-import { Fun, Obj, Optional, Type } from '@ephox/katamari';
-
+import { AddOnConstructor } from '../api/AddOnManager';
 import DOMUtils from '../api/dom/DOMUtils';
 import Editor from '../api/Editor';
 import IconManager from '../api/IconManager';
+import ModelManager, { Model } from '../api/ModelManager';
 import * as Options from '../api/Options';
 import { ThemeInitFunc } from '../api/OptionTypes';
 import PluginManager from '../api/PluginManager';
-import ThemeManager from '../api/ThemeManager';
+import ThemeManager, { Theme } from '../api/ThemeManager';
 import { EditorUiApi } from '../api/ui/Ui';
 import Tools from '../api/util/Tools';
 import * as ErrorReporter from '../ErrorReporter';
@@ -54,9 +49,9 @@ const trimLegacyPrefix = (name: string) => {
 };
 
 const initPlugins = (editor: Editor) => {
-  const initializedPlugins = [];
+  const initializedPlugins: string[] = [];
 
-  Tools.each(Options.getPlugins(editor).split(/[ ,]/), (name) => {
+  Arr.each(Options.getPlugins(editor), (name) => {
     initPlugin(editor, initializedPlugins, trimLegacyPrefix(name));
   });
 };
@@ -82,7 +77,7 @@ const initTheme = (editor: Editor) => {
   const theme = Options.getTheme(editor);
 
   if (Type.isString(theme)) {
-    const Theme = ThemeManager.get(theme);
+    const Theme = ThemeManager.get(theme) as AddOnConstructor<Theme>;
     editor.theme = Theme(editor, ThemeManager.urls[theme]) || {};
 
     if (Type.isFunction(editor.theme.init)) {
@@ -94,9 +89,16 @@ const initTheme = (editor: Editor) => {
   }
 };
 
+const initModel = (editor: Editor) => {
+  const model = Options.getModel(editor);
+  const Model = ModelManager.get(model) as AddOnConstructor<Model>;
+  editor.model = Model(editor, ModelManager.urls[model]);
+};
+
 const renderFromLoadedTheme = (editor: Editor) => {
   // Render UI
-  return editor.theme.renderUI();
+  const render = editor.theme.renderUI;
+  return render ? render() : renderThemeFalse(editor);
 };
 
 const renderFromThemeFunc = (editor: Editor) => {
@@ -117,10 +119,10 @@ const renderFromThemeFunc = (editor: Editor) => {
   return info;
 };
 
-const createThemeFalseResult = (element: HTMLElement) => {
+const createThemeFalseResult = (element: HTMLElement | null, iframe?: HTMLElement) => {
   return {
     editorContainer: element,
-    iframeContainer: element,
+    iframeContainer: iframe,
     api: {}
   };
 };
@@ -130,7 +132,7 @@ const renderThemeFalseIframe = (targetElement: Element) => {
 
   DOM.insertAfter(iframeContainer, targetElement);
 
-  return createThemeFalseResult(iframeContainer);
+  return createThemeFalseResult(iframeContainer, iframeContainer);
 };
 
 const renderThemeFalse = (editor: Editor) => {
@@ -156,37 +158,36 @@ const augmentEditorUiApi = (editor: Editor, api: Partial<EditorUiApi>) => {
   const uiApiFacade: EditorUiApi = {
     show: Optional.from(api.show).getOr(Fun.noop),
     hide: Optional.from(api.hide).getOr(Fun.noop),
-    disable: Optional.from(api.disable).getOr(Fun.noop),
-    isDisabled: Optional.from(api.isDisabled).getOr(Fun.never),
-    enable: () => {
+    isEnabled: Optional.from(api.isEnabled).getOr(Fun.always),
+    setEnabled: (state) => {
       if (!editor.mode.isReadOnly()) {
-        Optional.from(api.enable).map(Fun.call);
+        Optional.from(api.setEnabled).each((f) => f(state));
       }
     }
   };
   editor.ui = { ...editor.ui, ...uiApiFacade };
 };
 
-const init = (editor: Editor) => {
-  editor.fire('ScriptsLoaded');
+const init = async (editor: Editor): Promise<void> => {
+  editor.dispatch('ScriptsLoaded');
 
   initIcons(editor);
   initTheme(editor);
+  initModel(editor);
   initPlugins(editor);
-  const renderInfo = renderThemeUi(editor);
+  const renderInfo = await renderThemeUi(editor);
   augmentEditorUiApi(editor, Optional.from(renderInfo.api).getOr({}));
-  const boxInfo = {
-    editorContainer: renderInfo.editorContainer,
-    iframeContainer: renderInfo.iframeContainer
-  };
-  editor.editorContainer = boxInfo.editorContainer ? boxInfo.editorContainer : null;
+  editor.editorContainer = renderInfo.editorContainer as HTMLElement;
   appendContentCssFromSettings(editor);
 
   // Content editable mode ends here
   if (editor.inline) {
-    return InitContentBody.initContentBody(editor);
+    InitContentBody.initContentBody(editor);
   } else {
-    return InitIframe.init(editor, boxInfo);
+    InitIframe.init(editor, {
+      editorContainer: renderInfo.editorContainer,
+      iframeContainer: renderInfo.iframeContainer as HTMLElement
+    });
   }
 };
 

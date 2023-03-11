@@ -3,13 +3,16 @@ import { context, describe, it } from '@ephox/bedrock-client';
 import { Fun } from '@ephox/katamari';
 import { PlatformDetection } from '@ephox/sand';
 import { Attribute, Class, SugarBody } from '@ephox/sugar';
-import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
+import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import EditorManager from 'tinymce/core/api/EditorManager';
+import { BeforeSetContentEvent, SaveContentEvent, SetContentEvent } from 'tinymce/core/api/EventTypes';
 import PluginManager from 'tinymce/core/api/PluginManager';
+import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 import URI from 'tinymce/core/api/util/URI';
+import { UndoLevel } from 'tinymce/core/undo/UndoManagerTypes';
 
 import * as HtmlUtils from '../module/test/HtmlUtils';
 
@@ -23,12 +26,15 @@ describe('browser.tinymce.core.EditorTest', () => {
     extended_valid_elements: 'custom1,custom2,script[*]',
     entities: 'raw',
     indent: false,
+    custom_prop1: 5,
+    custom_prop2: 5,
     base_url: '/project/tinymce/js/tinymce'
   }, []);
 
   it('TBA: Event: change', () => {
     const editor = hook.editor();
-    let level, lastLevel;
+    let level: UndoLevel | undefined;
+    let lastLevel: UndoLevel | undefined;
 
     editor.on('change', (e) => {
       level = e.level;
@@ -37,8 +43,8 @@ describe('browser.tinymce.core.EditorTest', () => {
 
     editor.setContent('');
     editor.insertContent('a');
-    assert.equal(level.content.toLowerCase(), '<p>a</p>', 'Event: change');
-    assert.equal(lastLevel.content, editor.undoManager.data[0].content, 'Event: change');
+    assert.equal(level?.content.toLowerCase(), '<p>a</p>', 'Event: change');
+    assert.equal(lastLevel?.content, editor.undoManager.data[0].content, 'Event: change');
 
     editor.off('change');
   });
@@ -73,25 +79,25 @@ describe('browser.tinymce.core.EditorTest', () => {
     editor.options.set('relative_urls', true);
     editor.documentBaseURI = new URI('http://www.site.com/dirA/dirB/dirC/');
 
-    editor.setContent('<a href="test.html">test</a>');
+    editor.setContent('<p><a href="test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="test.html">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="../test.html">test</a>');
+    editor.setContent('<p><a href="../test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="../test.html">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="test/test.html">test</a>');
+    editor.setContent('<p><a href="test/test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="test/test.html">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="/test.html">test</a>');
+    editor.setContent('<p><a href="/test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="../../../test.html">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="http://www.somesite.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="http://www.somesite.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.somesite.com/test/file.htm">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="//www.site.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="//www.site.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="../../../test/file.htm">test</a></p>', 'urls - relativeURLs');
 
-    editor.setContent('<a href="//www.somesite.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="//www.somesite.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="//www.somesite.com/test/file.htm">test</a></p>', 'urls - relativeURLs');
   });
 
@@ -101,37 +107,37 @@ describe('browser.tinymce.core.EditorTest', () => {
     editor.options.set('remove_script_host', true);
     editor.documentBaseURI = new URI('http://www.site.com/dirA/dirB/dirC/');
 
-    editor.setContent('<a href="test.html">test</a>');
+    editor.setContent('<p><a href="test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="/dirA/dirB/dirC/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="../test.html">test</a>');
+    editor.setContent('<p><a href="../test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="/dirA/dirB/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="test/test.html">test</a>');
+    editor.setContent('<p><a href="test/test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="/dirA/dirB/dirC/test/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="http://www.somesite.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="http://www.somesite.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.somesite.com/test/file.htm">test</a></p>', 'urls - absoluteURLs');
 
     editor.options.set('relative_urls', false);
     editor.options.set('remove_script_host', false);
 
-    editor.setContent('<a href="test.html">test</a>');
+    editor.setContent('<p><a href="test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.site.com/dirA/dirB/dirC/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="../test.html">test</a>');
+    editor.setContent('<p><a href="../test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.site.com/dirA/dirB/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="test/test.html">test</a>');
+    editor.setContent('<p><a href="test/test.html">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.site.com/dirA/dirB/dirC/test/test.html">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="http://www.somesite.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="http://www.somesite.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="http://www.somesite.com/test/file.htm">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="//www.site.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="//www.site.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="//www.site.com/test/file.htm">test</a></p>', 'urls - absoluteURLs');
 
-    editor.setContent('<a href="//www.somesite.com/test/file.htm">test</a>');
+    editor.setContent('<p><a href="//www.somesite.com/test/file.htm">test</a></p>');
     assert.equal(editor.getContent(), '<p><a href="//www.somesite.com/test/file.htm">test</a></p>', 'urls - absoluteURLs');
   });
 
@@ -149,31 +155,26 @@ describe('browser.tinymce.core.EditorTest', () => {
     assert.equal(editor.getContent(), '<p>123</p><table><tbody><tr><td>X</td></tr></tbody></table><p>456</p>', 'WebKit Serialization range bug');
   });
 
-  it('TBA: editor_methods - getParam', function () {
-    // TODO: TINY-8236 (TINY-8234) Remove the skip once getParam uses the options API internally
-    this.skip();
+  it('TBA: editor_methods - getParam', () => {
     const editor = hook.editor();
-    editor.options.set('test', 'a,b,c');
-    assert.equal(editor.getParam('test', '', 'hash').c, 'c', 'editor_methods - getParam');
 
-    editor.options.set('test', 'a');
-    assert.equal(editor.getParam('test', '', 'hash').a, 'a', 'editor_methods - getParam');
+    assert.isUndefined(editor.getParam('test1'), 'unregistered with no default');
+    assert.equal(editor.getParam('test2', ''), '', 'unregistered with default');
+    assert.equal(editor.getParam('test2', 'blah'), 'blah', 'unregistered with different default');
 
-    editor.options.set('test', 'a=b');
-    assert.equal(editor.getParam('test', '', 'hash').a, 'b', 'editor_methods - getParam');
+    assert.equal(editor.getParam('custom_prop1', 10, 'number'), 5, 'unregistered with correct type');
+    assert.equal(editor.getParam('custom_prop2', '10', 'string'), '10', 'unregistered with incorrect type');
 
-    editor.options.set('test', 'a=b;c=d,e');
-    assert.equal(editor.getParam('test', '', 'hash').c, 'd,e', 'editor_methods - getParam');
-
-    editor.options.set('test', 'a=b,c=d');
-    assert.equal(editor.getParam('test', '', 'hash').c, 'd', 'editor_methods - getParam');
+    editor.options.register('test4', { processor: 'string', default: 'default' });
+    assert.equal(editor.getParam('test4'), 'default', 'registered with no passed default');
+    assert.equal(editor.getParam('test4', 'override'), 'override', 'registered with passed default');
   });
 
   it('TBA: setContent', () => {
     const editor = hook.editor();
-    let count;
+    let count: number;
 
-    const callback = (e) => {
+    const callback = (e: EditorEvent<SetContentEvent | BeforeSetContentEvent>) => {
       e.content = e.content.replace(/test/, 'X');
       count++;
     };
@@ -217,7 +218,7 @@ describe('browser.tinymce.core.EditorTest', () => {
 
   it('TBA: show/hide/isHidden and events', () => {
     const editor = hook.editor();
-    let lastEvent;
+    let lastEvent: EditorEvent<{}> | undefined;
 
     editor.on('show hide', (e) => {
       lastEvent = e;
@@ -227,24 +228,25 @@ describe('browser.tinymce.core.EditorTest', () => {
 
     editor.hide();
     assert.isTrue(editor.isHidden(), 'After hide isHidden state');
-    assert.equal('hide', lastEvent.type, 'show/hide/isHidden and events');
+    assert.equal(lastEvent?.type, 'hide', 'show/hide/isHidden and events');
 
-    lastEvent = null;
+    lastEvent = undefined;
     editor.hide();
-    assert.isNull(lastEvent, 'show/hide/isHidden and events');
+    assert.isUndefined(lastEvent, 'show/hide/isHidden and events');
 
     editor.show();
     assert.isFalse(editor.isHidden(), 'After show isHidden state');
-    assert.equal(lastEvent.type, 'show', 'show/hide/isHidden and events');
+    assert.equal((lastEvent as unknown as EditorEvent<{}>).type, 'show', 'show/hide/isHidden and events');
 
-    lastEvent = null;
+    lastEvent = undefined;
     editor.show();
-    assert.isNull(lastEvent, 'show/hide/isHidden and events');
+    assert.isUndefined(lastEvent, 'show/hide/isHidden and events');
   });
 
   it('TBA: hide save content and hidden state while saving', () => {
     const editor = hook.editor();
-    let lastEvent, hiddenStateWhileSaving;
+    let lastEvent: EditorEvent<SaveContentEvent> | undefined;
+    let hiddenStateWhileSaving: boolean | undefined;
 
     editor.on('SaveContent', (e) => {
       lastEvent = e;
@@ -256,7 +258,7 @@ describe('browser.tinymce.core.EditorTest', () => {
 
     const elm: any = document.getElementById(editor.id);
     assert.isFalse(hiddenStateWhileSaving, 'False isHidden state while saving');
-    assert.equal(lastEvent.content, '<p>xyz</p>', 'hide save content and hidden state while saving');
+    assert.equal(lastEvent?.content, '<p>xyz</p>', 'hide save content and hidden state while saving');
     assert.equal(elm.value, '<p>xyz</p>', 'hide save content and hidden state while saving');
 
     editor.show();
@@ -281,9 +283,10 @@ describe('browser.tinymce.core.EditorTest', () => {
   it('TBA: addCommand', () => {
     const editor = hook.editor();
     const scope = {};
-    let lastScope, lastArgs;
+    let lastScope: {} | undefined;
+    let lastArgs: IArguments | undefined;
 
-    const callback = function () { // Arrow function cannot be used with 'arguments'.
+    const callback = function (this: {}) { // Arrow function cannot be used with 'arguments'.
       // eslint-disable-next-line
       lastScope = this;
       lastArgs = arguments;
@@ -292,23 +295,24 @@ describe('browser.tinymce.core.EditorTest', () => {
     editor.addCommand('CustomCommand1', callback, scope);
     editor.addCommand('CustomCommand2', callback);
 
-    editor.execCommand('CustomCommand1', false, 'value', { extra: true });
-    assert.isFalse(lastArgs[0], 'addCommand');
-    assert.equal( lastArgs[1], 'value', 'addCommand');
-    assert.strictEqual(lastScope, scope, 'addCommand');
+    editor.execCommand('CustomCommand1', false, 'value');
+    assert.isFalse(lastArgs?.[0], 'ui');
+    assert.equal(lastArgs?.[1], 'value', 'value');
+    assert.strictEqual(lastScope, scope, 'scope');
 
     editor.execCommand('CustomCommand2');
-    assert.isUndefined(lastArgs[0], 'addCommand');
-    assert.isUndefined(lastArgs[1], 'addCommand');
-    assert.strictEqual(lastScope, editor, 'addCommand');
+    assert.isFalse(lastArgs?.[0], 'ui');
+    assert.isUndefined(lastArgs?.[1], 'value');
+    assert.strictEqual(lastScope, editor, 'scope');
   });
 
   it('TBA: addQueryStateHandler', () => {
     const editor = hook.editor();
     const scope = {};
-    let lastScope, currentState;
+    let lastScope: {} | undefined;
+    let currentState: boolean;
 
-    const callback = function () { // Arrow function cannot be used with 'this'.
+    const callback = function (this: {}) { // Arrow function cannot be used with 'this'.
       // eslint-disable-next-line
       lastScope = this;
       return currentState;
@@ -350,9 +354,10 @@ describe('browser.tinymce.core.EditorTest', () => {
   it('TBA: addQueryValueHandler', () => {
     const editor = hook.editor();
     const scope = {};
-    let lastScope, currentValue;
+    let lastScope: {} | undefined;
+    let currentValue: string;
 
-    const callback = function () { // Arrow function cannot be used with 'this'.
+    const callback = function (this: {}) { // Arrow function cannot be used with 'this'.
       // eslint-disable-next-line
       lastScope = this;
       return currentValue;
@@ -372,27 +377,27 @@ describe('browser.tinymce.core.EditorTest', () => {
 
   it('TBA: setDirty/isDirty', () => {
     const editor = hook.editor();
-    let lastArgs = null;
+    let lastArgs: EditorEvent<{}> | undefined;
 
     editor.on('dirty', (e) => {
       lastArgs = e;
     });
 
     editor.setDirty(false);
-    assert.isNull(lastArgs, 'setDirty/isDirty');
+    assert.isUndefined(lastArgs, 'setDirty/isDirty');
     assert.isFalse(editor.isDirty(), 'setDirty/isDirty');
 
     editor.setDirty(true);
-    assert.equal(lastArgs.type, 'dirty', 'setDirty/isDirty');
+    assert.equal(lastArgs?.type, 'dirty', 'setDirty/isDirty');
     assert.isTrue( editor.isDirty(), 'setDirty/isDirty');
 
-    lastArgs = null;
+    lastArgs = undefined;
     editor.setDirty(true);
-    assert.isNull(lastArgs, 'setDirty/isDirty');
+    assert.isUndefined(lastArgs, 'setDirty/isDirty');
     assert.isTrue(editor.isDirty(), 'setDirty/isDirty');
 
     editor.setDirty(false);
-    assert.isNull(lastArgs, 'setDirty/isDirty');
+    assert.isUndefined(lastArgs, 'setDirty/isDirty');
     assert.isFalse(editor.isDirty(), 'setDirty/isDirty');
   });
 
@@ -400,7 +405,7 @@ describe('browser.tinymce.core.EditorTest', () => {
     const editor = hook.editor();
     let clickCount = 0;
 
-    const isDisabled = (selector) => {
+    const isDisabled = (selector: string) => {
       const elm = UiFinder.findIn(SugarBody.body(), selector);
       return elm.forall((elm) => Attribute.has(elm, 'disabled') || Class.has(elm, 'tox-tbtn--disabled'));
     };
@@ -409,16 +414,16 @@ describe('browser.tinymce.core.EditorTest', () => {
       clickCount++;
     });
 
-    editor.dom.fire(editor.getBody(), 'click');
+    editor.dom.dispatch(editor.getBody(), 'click');
     assert.equal(clickCount, 1, 'setMode');
 
     editor.mode.set('readonly');
     assert.isTrue(isDisabled('.tox-editor-container button:last-of-type'), 'setMode');
-    editor.dom.fire(editor.getBody(), 'click');
+    editor.dom.dispatch(editor.getBody(), 'click');
     assert.equal(clickCount, 1, 'setMode');
 
     editor.mode.set('design');
-    editor.dom.fire(editor.getBody(), 'click');
+    editor.dom.dispatch(editor.getBody(), 'click');
     assert.isFalse(isDisabled('.tox-editor-container button:last-of-type'), 'setMode');
     assert.equal(clickCount, 2, 'setMode');
   });
@@ -469,13 +474,25 @@ describe('browser.tinymce.core.EditorTest', () => {
     editor.focus();
     assert.isTrue(editor.hasFocus(), 'hasFocus');
 
-    input.parentNode.removeChild(input);
+    input.parentNode?.removeChild(input);
+  });
+
+  it('TINY-6946: Images should be properly cleaned up if they contain invalid trailing data', () => {
+    const editor = hook.editor();
+    editor.setContent('<img src="data:image/gif;base64,R0lGODdhIAAgAIABAP8AAP///ywAAAAAIAAgAAACHoSPqcvtD6OctNqLs968+w+G4kiW5omm6sq27gubBQA7AA==%A0">');
+    TinyAssertions.assertContent(editor, '<p><img src="data:image/gif;base64,R0lGODdhIAAgAIABAP8AAP///ywAAAAAIAAgAAACHoSPqcvtD6OctNqLs968+w+G4kiW5omm6sq27gubBQA7AA=="></p>');
+  });
+
+  it('TINY-6946: Images should cut off invalid data, even if the image remains invalid', () => {
+    const editor = hook.editor();
+    editor.setContent('<img src="data:image/gif;base64,R0ÖlGODdhIAAgAIABAP8AAP///ywAAAAAIAAgAAACHoSPqcvtD6OctNqLs968+w+G4kiW5omm6sq27gubBQA7AA==%A0">');
+    TinyAssertions.assertContent(editor, '<p><img src="data:image/gif;base64,R0"></p>');
   });
 
   context('hasPlugin', () => {
     const checkWithoutManager = (title: string, plugins: string, plugin: string, expected: boolean) => {
       const editor = hook.editor();
-      editor.options.set('plugins', plugins);
+      editor.options.set('plugins', plugins.split(/[ ,]/));
       assert.equal(editor.hasPlugin(plugin), expected, title);
     };
 
@@ -485,7 +502,7 @@ describe('browser.tinymce.core.EditorTest', () => {
         PluginManager.add('ParticularPlugin', Fun.noop);
       }
 
-      editor.options.set('plugins', plugins);
+      editor.options.set('plugins', plugins.split(/[ ,]/));
       assert.equal(editor.hasPlugin(plugin, true), expected, title);
 
       if (addToManager) {

@@ -1,5 +1,5 @@
 import { ApproxStructure, Assertions, Keyboard, Keys, Mouse, UiControls, UiFinder, Waiter } from '@ephox/agar';
-import { AlloyTriggers, Disabling, Focusing, GuiFactory, NativeEvents, Representing, TestHelpers } from '@ephox/alloy';
+import { Disabling, Focusing, GuiFactory, Representing, TestHelpers } from '@ephox/alloy';
 import { beforeEach, describe, it } from '@ephox/bedrock-client';
 import { Future, Optional } from '@ephox/katamari';
 import { SelectorFind, SugarDocument, Value } from '@ephox/sugar';
@@ -12,15 +12,15 @@ import { renderUrlInput } from 'tinymce/themes/silver/ui/dialog/UrlInput';
 import * as TestExtras from '../../../module/TestExtras';
 
 describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () => {
-  const helpers = TestExtras.bddSetup();
+  const extrasHook = TestExtras.bddSetup();
 
   const hook = TestHelpers.GuiSetup.bddSetup((store, _doc, _body) => GuiFactory.build(
     renderUrlInput({
       label: Optional.some('UrlInput label'),
       name: 'col1',
       filetype: 'file',
-      disabled: false
-    }, helpers.backstage(), {
+      enabled: true
+    }, extrasHook.access().extras.backstages.popup, {
       getHistory: (_fileType) => [],
       addToHistory: (_url, _filetype) => store.adder('addToHistory')(),
       getLinkInformation: () => Optional.some({
@@ -35,7 +35,7 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
           {
             type: 'header' as LinkTargetType,
             title: 'Header2',
-            url: '#h_2abefd32',
+            url: '#header2',
             level: 0,
             attach: store.adder('header2.attach')
           }
@@ -48,8 +48,8 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
         store.adder('urlpicker')();
         return Future.pure({ value: 'http://tiny.cloud', meta: { before: entry.value }, fieldname: 'test' });
       })
-    })
-  ));
+    }, Optional.none())
+  ), () => extrasHook.access().getPopupMothership());
 
   TestHelpers.GuiSetup.bddAddStyles(SugarDocument.getDocument(), [
     '.tox-menu { background: white; }',
@@ -64,7 +64,7 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
   };
 
   const pOpenMenu = async () => {
-    const sink = helpers.sink();
+    const sink = extrasHook.access().getPopupSink();
     const doc = hook.root();
     Focusing.focus(getInput());
     Keyboard.activeKeydown(doc, Keys.down());
@@ -72,10 +72,14 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
     return UiFinder.findIn(sink, '[role="menu"]').getOrDie();
   };
 
+  const assertMenuIsClosed = () =>
+    UiFinder.notExists(hook.body(), '.tox-menu');
+
   const closeMenu = () => {
     const doc = hook.root();
-    // Close the menu
-    Keyboard.activeKeydown(doc, Keys.escape());
+    // Close the menu and verify it did actually close
+    Keyboard.activeKeystroke(doc, Keys.escape());
+    assertMenuIsClosed();
   };
 
   beforeEach(() => {
@@ -134,14 +138,13 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
   });
 
   it('Type "He", select an item and assert input state is updated', async () => {
-    const sink = helpers.sink();
+    const sink = extrasHook.access().getPopupSink();
     const store = hook.store();
     const doc = hook.root();
     const input = getInput();
 
     await pOpenMenu();
-    UiControls.setValue(input.element, 'He');
-    AlloyTriggers.emit(input, NativeEvents.input());
+    UiControls.setValue(input.element, 'He', 'input');
     await Waiter.pTryUntil(
       'Waiting for the menu to update',
       () => {
@@ -160,7 +163,7 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
             classes: [ arr.has('tox-collection__group') ],
             children: [
               s.element('div', {
-                classes: [ arr.has('tox-collection__item') ],
+                classes: [ arr.has('tox-collection__item'), arr.has('tox-collection__item--active') ],
                 children: [
                   s.element('div', { html: str.is('Header1') })
                 ]
@@ -181,6 +184,7 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
     store.assertEq('nothing in store ... before selecting item', []);
     Keyboard.activeKeydown(doc, Keys.enter());
     assert.equal(Value.get(input.element), '#header', 'Checking Value.get');
+    assertMenuIsClosed();
     const repValue = Representing.getValue(input);
     assert.deepEqual(
       {
@@ -200,8 +204,6 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
     // Check that attach fires
     repValue.meta.attach();
     store.assertEq('Attach should be in store ... after firing attach', [ 'addToHistory', 'header1.attach' ]);
-
-    closeMenu();
   });
 
   it('Click urlpicker and assert input state is updated', async () => {
@@ -232,5 +234,32 @@ describe('headless.tinymce.themes.silver.components.urlinput.UrlInputTest', () =
       meta: { before: '#header' },
       fieldname: 'test'
     }, 'Checking Rep.getValue');
+  });
+
+  it('TINY-8997: Should not populate the input value when highlighting a dropdown item', async () => {
+    const input = getInput();
+
+    UiControls.setValue(input.element, '');
+    const menu = await pOpenMenu();
+
+    Mouse.hoverOn(menu, '.tox-collection__item:contains(Header2)');
+    assert.equal(UiControls.getValue(input.element), '');
+
+    Mouse.clickOn(menu, '.tox-collection__item:contains(Header1)');
+    assert.equal(Value.get(input.element), '#header', 'Checking Value.get');
+    assertMenuIsClosed();
+
+    const repValue = Representing.getValue(input);
+    assert.deepEqual(
+      {
+        value: repValue.value,
+        meta: { text: repValue.meta.text }
+      },
+      {
+        value: '#header',
+        meta: { text: 'Header1' }
+      },
+      'Checking Rep.getValue'
+    );
   });
 });

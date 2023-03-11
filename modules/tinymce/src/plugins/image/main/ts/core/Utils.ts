@@ -1,16 +1,8 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { StyleMap } from 'tinymce/core/api/html/Styles';
 import URI from 'tinymce/core/api/util/URI';
-import XHR from 'tinymce/core/api/util/XHR';
 
 import * as Options from '../api/Options';
 import { UserListItem } from '../ui/DialogTypes';
@@ -114,12 +106,12 @@ const createImageList = (editor: Editor, callback: (imageList: false | UserListI
   const imageList = Options.getImageList(editor);
 
   if (Type.isString(imageList)) {
-    XHR.send({
-      url: imageList,
-      success: (text) => {
-        callback(JSON.parse(text));
-      }
-    });
+    fetch(imageList)
+      .then((res) => {
+        if (res.ok) {
+          res.json().then(callback);
+        }
+      });
   } else if (Type.isFunction(imageList)) {
     imageList(callback);
   } else {
@@ -157,7 +149,7 @@ const blobToDataUri = (blob: Blob): Promise<string> => new Promise((resolve, rej
     resolve(reader.result as string);
   };
   reader.onerror = () => {
-    reject(reader.error.message);
+    reject(reader.error?.message);
   };
   reader.readAsDataURL(blob);
 });

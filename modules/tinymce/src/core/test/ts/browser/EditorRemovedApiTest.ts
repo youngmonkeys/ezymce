@@ -11,7 +11,7 @@ describe('browser.tinymce.core.EditorRemovedApiTest', () => {
     test_callback: Fun.noop
   }, []);
 
-  const tryAccess = (name: string, expectedValue: any) => {
+  const tryAccess = (name: keyof Editor, expectedValue: any) => {
     const editor = hook.editor();
     const result = editor[name]();
     assert.equal(result, expectedValue, 'Should be expected value on a removed editor');
@@ -33,7 +33,7 @@ describe('browser.tinymce.core.EditorRemovedApiTest', () => {
     editor.queryCommandState('bold');
     editor.queryCommandValue('bold');
     editor.queryCommandSupported('bold');
-    editor.uploadImages(Fun.noop);
+    editor.uploadImages();
     editor.setContent('a');
     editor.insertContent('a');
     editor.execCommand('bold');

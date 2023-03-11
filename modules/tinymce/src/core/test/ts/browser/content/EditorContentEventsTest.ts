@@ -1,10 +1,10 @@
 import { beforeEach, describe, it } from '@ephox/bedrock-client';
-import { Arr } from '@ephox/katamari';
-import { TinyAssertions } from '@ephox/mcagar';
-import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
+import { Arr, Singleton } from '@ephox/katamari';
+import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { SetContentEvent, GetContentEvent } from 'tinymce/core/api/EventTypes';
 import { ContentFormat } from 'tinymce/core/content/ContentTypes';
 
 describe('browser.tinymce.core.content.EditorContentEventsTest', () => {
@@ -13,7 +13,7 @@ describe('browser.tinymce.core.content.EditorContentEventsTest', () => {
 
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce',
-    setup: (editor) => {
+    setup: (editor: Editor) => {
       editor.on('BeforeGetContent GetContent BeforeSetContent SetContent', (e) => {
         events.push(e.type);
       });
@@ -50,7 +50,7 @@ describe('browser.tinymce.core.content.EditorContentEventsTest', () => {
 
     clearEvents();
     overrideGetContent('<h1>new content</h1>');
-    assert.equal(editor.getContent(), '<h1>new content</h1>');
+    TinyAssertions.assertContent(editor, '<h1>new content</h1>');
     assertEvents([ 'beforegetcontent', 'getcontent' ]);
 
     clearEvents();
@@ -63,7 +63,7 @@ describe('browser.tinymce.core.content.EditorContentEventsTest', () => {
     const editor = hook.editor();
 
     clearEvents();
-    assert.equal(editor.getContent({ no_events: true }), '<p>Some initial content</p>');
+    TinyAssertions.assertContent(editor, '<p>Some initial content</p>', { no_events: true });
     assertEvents([]);
 
     clearEvents();
@@ -123,5 +123,31 @@ describe('browser.tinymce.core.content.EditorContentEventsTest', () => {
     editor.selection.setContent('Selection content', { no_events: true });
     assertEvents([]);
     TinyAssertions.assertContent(editor, '<p>Selection content</p>');
+  });
+
+  const data = { hello: 'world', test: 132 };
+  Arr.each([ 'BeforeSetContent', 'SetContent' ], (action) => {
+    it(`TINY-9143: Can pass custom data object to "${action}" event`, () => {
+      const editor = hook.editor();
+      const lastEventState = Singleton.value<SetContentEvent>();
+      editor.setContent('<p>initial</p>');
+      editor.once(action, (e) => lastEventState.set(e));
+      editor.setContent('<p>new</p>', data);
+      const lastEvent = lastEventState.get().getOrDie('Should be set');
+      assert.equal(lastEvent.hello, data.hello);
+      assert.equal(lastEvent.test, data.test);
+    });
+  });
+  Arr.each([ 'BeforeGetContent', 'GetContent' ], (action) => {
+    it(`TINY-9143: Can pass custom data object to "${action}" event`, () => {
+      const editor = hook.editor();
+      const lastEventState = Singleton.value<GetContentEvent>();
+      editor.setContent('<p>initial</p>');
+      editor.once(action, (e) => lastEventState.set(e));
+      editor.getContent(data);
+      const lastEvent = lastEventState.get().getOrDie('Should be set');
+      assert.equal(lastEvent.hello, data.hello);
+      assert.equal(lastEvent.test, data.test);
+    });
   });
 });

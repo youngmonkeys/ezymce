@@ -1,30 +1,24 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Obj } from '@ephox/katamari';
+import { Obj, Type } from '@ephox/katamari';
 
 import * as ArrUtils from '../../util/ArrUtils';
 import Env from '../Env';
 
 type ArrayCallback<T, R> = ArrUtils.ArrayCallback<T, R>;
 type ObjCallback<T, R> = ArrUtils.ObjCallback<T, R>;
+type WalkCallback<T> = (this: any, o: T, i: string, n: keyof T | undefined) => boolean | void;
 
 interface Tools {
-  is: (obj: any, type: string) => boolean;
+  is: (obj: any, type?: string) => boolean;
   isArray: <T>(arr: any) => arr is Array<T>;
   inArray: <T>(arr: ArrayLike<T>, value: T) => number;
   grep: {
     <T>(arr: ArrayLike<T> | null | undefined, pred?: ArrayCallback<T, boolean>): T[];
     <T>(arr: Record<string, T> | null | undefined, pred?: ObjCallback<T, boolean>): T[];
   };
-  trim: (str: string) => string;
+  trim: (str: string | null | undefined) => string;
   toArray: <T>(obj: ArrayLike<T>) => T[];
   hasOwn: (obj: any, name: string) => boolean;
-  makeMap: <T>(items: ArrayLike<T> | string, delim?: string | RegExp, map?: Record<string, T | string>) => Record<string, T | string>;
+  makeMap: (items: ArrayLike<string> | string | undefined, delim?: string | RegExp, map?: Record<string, {}>) => Record<string, {}>;
   each: {
     <T>(arr: ArrayLike<T> | null | undefined, cb: ArrayCallback<T, void | boolean>, scope?: any): boolean;
     <T>(obj: Record<string, T> | null | undefined, cb: ObjCallback<T, void | boolean>, scope?: any): boolean;
@@ -34,9 +28,9 @@ interface Tools {
     <T, R>(obj: Record<string, T> | null | undefined, cb: ObjCallback<T, R>): R[];
   };
   extend: (obj: Object, ext: Object, ...objs: Object[]) => any;
-  walk: <T = any>(obj: T, f: Function, n?: keyof T, scope?: any) => void;
+  walk: <T extends Record<string, any>>(obj: T, f: WalkCallback<T>, n?: keyof T, scope?: any) => void;
   resolve: (path: string, o?: Object) => any;
-  explode: (s: string, d?: string | RegExp) => string[];
+  explode: (s: string | string[], d?: string | RegExp) => string[];
   _addCacheSuffix: (url: string) => string;
 }
 
@@ -56,8 +50,8 @@ interface Tools {
  */
 const whiteSpaceRegExp = /^\s*|\s*$/g;
 
-const trim = (str) => {
-  return (str === null || str === undefined) ? '' : ('' + str).replace(whiteSpaceRegExp, '');
+const trim = (str: string | null | undefined): string => {
+  return Type.isNullable(str) ? '' : ('' + str).replace(whiteSpaceRegExp, '');
 };
 
 /**
@@ -65,10 +59,10 @@ const trim = (str) => {
  *
  * @method is
  * @param {Object} obj Object to check type of.
- * @param {string} type Optional type to check for.
+ * @param {String} type Optional type to check for.
  * @return {Boolean} true/false if the object is of the specified type.
  */
-const is = (obj: any, type: string) => {
+const is = (obj: any, type?: string): boolean => {
   if (!type) {
     return obj !== undefined;
   }
@@ -89,21 +83,12 @@ const is = (obj: any, type: string) => {
  * @param {Object} map Optional map to add items to.
  * @return {Object} Name/value map of items.
  */
-const makeMap = (items, delim?, map?) => {
-  let i;
+const makeMap = (items: ArrayLike<string> | string | undefined, delim?: string | RegExp, map: Record<string, {}> = {}): Record<string, {}> => {
+  const resolvedItems = Type.isString(items) ? items.split(delim || ',') : (items || []);
 
-  items = items || [];
-  delim = delim || ',';
-
-  if (typeof items === 'string') {
-    items = items.split(delim);
-  }
-
-  map = map || {};
-
-  i = items.length;
+  let i = resolvedItems.length;
   while (i--) {
-    map[items[i]] = {};
+    map[resolvedItems[i]] = {};
   }
 
   return map;
@@ -121,7 +106,7 @@ const makeMap = (items, delim?, map?) => {
  */
 const hasOwnProperty = Obj.has;
 
-const extend = (obj, ...exts: any[]) => {
+const extend = (obj: any, ...exts: any[]): any => {
   for (let i = 0; i < exts.length; i++) {
     const ext = exts[i];
     for (const name in ext) {
@@ -141,11 +126,11 @@ const extend = (obj, ...exts: any[]) => {
  *
  * @method walk
  * @param {Object} o Object tree to walk though.
- * @param {function} f Function to call for each item.
+ * @param {Function} f Function to call for each item.
  * @param {String} n Optional name of collection inside the objects to walk for example childNodes.
  * @param {String} s Optional scope to execute the function in.
  */
-const walk = function (o, f, n?, s?) {
+const walk = function <T extends Record<string, any>>(this: any, o: T, f: WalkCallback<T>, n?: keyof T, s?: any): void {
   s = s || this;
 
   if (o) {
@@ -153,12 +138,13 @@ const walk = function (o, f, n?, s?) {
       o = o[n];
     }
 
-    ArrUtils.each(o, (o, i) => {
+    ArrUtils.each<T>(o, (o, i) => {
       if (f.call(s, o, i, n) === false) {
         return false;
+      } else {
+        walk(o, f, n, s);
+        return true;
       }
-
-      walk(o, f, n, s);
     });
   }
 };
@@ -172,16 +158,12 @@ const walk = function (o, f, n?, s?) {
  * @return {Object} Last object in path or null if it couldn't be resolved.
  * @example
  * // Resolve a path into an object reference
- * var obj = tinymce.resolve('a.b.c.d');
+ * const obj = tinymce.resolve('a.b.c.d');
  */
-const resolve = (n, o?) => {
-  let i, l;
-
-  o = o || window;
-
-  n = n.split('.');
-  for (i = 0, l = n.length; i < l; i++) {
-    o = o[n[i]];
+const resolve = (n: string, o: any = window): any => {
+  const path = n.split('.');
+  for (let i = 0, l = path.length; i < l; i++) {
+    o = o[path[i]];
 
     if (!o) {
       break;
@@ -195,21 +177,23 @@ const resolve = (n, o?) => {
  * Splits a string but removes the whitespace before and after each value.
  *
  * @method explode
- * @param {string} s String to split.
- * @param {string} d Delimiter to split by.
+ * @param {String} s String to split.
+ * @param {String} d Delimiter to split by.
  * @example
  * // Split a string into an array with a,b,c
- * var arr = tinymce.explode('a, b,   c');
+ * const arr = tinymce.explode('a, b,   c');
  */
-const explode = (s, d?) => {
-  if (!s || is(s, 'array')) {
+const explode = (s: string | string[], d?: string | RegExp): string[] => {
+  if (Type.isArray(s)) {
     return s;
+  } else if (s === '') {
+    return [];
+  } else {
+    return ArrUtils.map(s.split(d || ','), trim);
   }
-
-  return ArrUtils.map(s.split(d || ','), trim);
 };
 
-const _addCacheSuffix = (url) => {
+const _addCacheSuffix = (url: string): string => {
   const cacheSuffix = Env.cacheSuffix;
 
   if (cacheSuffix) {
@@ -227,7 +211,7 @@ const Tools: Tools = {
    *
    * @method isArray
    * @param {Object} obj Object to check.
-   * @return {boolean} true/false state if the object is an array or not.
+   * @return {Boolean} true/false state if the object is an array or not.
    */
   isArray: ArrUtils.isArray,
 
@@ -244,23 +228,23 @@ const Tools: Tools = {
   makeMap,
 
   /**
-   * Performs an iteration of all items in a collection such as an object or array. This method will execure the
+   * Performs an iteration of all items in a collection such as an object or array. This method will execute the
    * callback function for each item in the collection, if the callback returns false the iteration will terminate.
-   * The callback has the following format: cb(value, key_or_index).
+   * The callback has the following format: `cb(value, key_or_index)`.
    *
    * @method each
    * @param {Object} o Collection to iterate.
-   * @param {function} cb Callback function to execute for each item.
+   * @param {Function} cb Callback function to execute for each item.
    * @param {Object} s Optional scope to execute the callback in.
    * @example
    * // Iterate an array
-   * tinymce.each([1,2,3], function(v, i) {
-   *     console.debug("Value: " + v + ", Index: " + i);
+   * tinymce.each([ 1,2,3 ], (v, i) => {
+   *   console.debug("Value: " + v + ", Index: " + i);
    * });
    *
    * // Iterate an object
-   * tinymce.each({a: 1, b: 2, c: 3], function(v, k) {
-   *     console.debug("Value: " + v + ", Key: " + k);
+   * tinymce.each({ a: 1, b: 2, c: 3 }, (v, k) => {
+   *   console.debug("Value: " + v + ", Key: " + k);
    * });
    */
   each: ArrUtils.each,
@@ -271,7 +255,7 @@ const Tools: Tools = {
    *
    * @method map
    * @param {Array} array Array of items to iterate.
-   * @param {function} callback Function to call for each item. It's return value will be the new value.
+   * @param {Function} callback Function to call for each item. It's return value will be the new value.
    * @return {Array} Array with new values based on function return values.
    */
   map: ArrUtils.map,
@@ -282,11 +266,11 @@ const Tools: Tools = {
    *
    * @method grep
    * @param {Array} a Array of items to loop though.
-   * @param {function} f Function to call for each item. Include/exclude depends on it's return value.
+   * @param {Function} f Function to call for each item. Include/exclude depends on it's return value.
    * @return {Array} New array with values imported and filtered based in input.
    * @example
    * // Filter out some items, this will return an array with 4 and 5
-   * var items = tinymce.grep([1,2,3,4,5], function(v) {return v > 3;});
+   * const items = tinymce.grep([ 1,2,3,4,5 ], (v) => v > 3);
    */
   grep: ArrUtils.filter,
 

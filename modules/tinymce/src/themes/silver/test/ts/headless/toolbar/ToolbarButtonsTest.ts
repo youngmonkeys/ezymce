@@ -15,7 +15,7 @@ import TestProviders from '../../module/TestProviders';
 describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
   const shouldDisable = Cell(false);
   const shouldActivate = Cell(false);
-  const helpers = TestExtras.bddSetup();
+  const extrasHook = TestExtras.bddSetup();
 
   const hook = TestHelpers.GuiSetup.bddSetup((store, _doc, _body) => GuiFactory.build({
     dom: {
@@ -30,7 +30,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
         components: [
           renderToolbarButton({
             type: 'button',
-            disabled: false,
+            enabled: true,
             tooltip: Optional.some('tooltip'),
             icon: Optional.none(),
             text: Optional.some('button1'),
@@ -40,7 +40,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
             },
             onAction: (api: Toolbar.ToolbarButtonInstanceApi) => {
               store.adder('onAction.1')();
-              api.setDisabled(shouldDisable.get());
+              api.setEnabled(!shouldDisable.get());
             }
           }, TestProviders)
         ]
@@ -54,7 +54,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
         components: [
           renderToolbarToggleButton({
             type: 'togglebutton',
-            disabled: false,
+            enabled: true,
             active: false,
             tooltip: Optional.some('tooltip'),
             icon: Optional.none(),
@@ -65,7 +65,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
             },
             onAction: (api: Toolbar.ToolbarToggleButtonInstanceApi) => {
               store.adder('onToggleAction.2')();
-              api.setDisabled(shouldDisable.get());
+              api.setEnabled(!shouldDisable.get());
               api.setActive(shouldActivate.get());
             }
           }, TestProviders)
@@ -90,24 +90,25 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
               callback([
                 {
                   type: 'choiceitem',
-                  text: 'Item 1'
+                  text: 'Item 1',
+                  value: 'item1'
                 }
               ]);
             },
-            onSetup: (_api: Toolbar.ToolbarToggleButtonInstanceApi) => {
+            onSetup: (_api: Toolbar.ToolbarSplitButtonInstanceApi) => {
               store.adder('onSetup.3')();
               return Fun.noop;
             },
-            onAction: (api: Toolbar.ToolbarToggleButtonInstanceApi) => {
+            onAction: (api: Toolbar.ToolbarSplitButtonInstanceApi) => {
               store.adder('onToggleAction.3')();
-              api.setDisabled(shouldDisable.get());
+              api.setEnabled(!shouldDisable.get());
               api.setActive(shouldActivate.get());
             },
-            onItemAction: (api: Toolbar.ToolbarToggleButtonInstanceApi, _value: string) => {
+            onItemAction: (api: Toolbar.ToolbarSplitButtonInstanceApi, _value: string) => {
               store.adder('onItemAction.3')();
               api.setActive(true);
             }
-          }, helpers.shared())
+          }, extrasHook.access().extras.backstages.popup.shared)
         ]
       },
 
@@ -121,6 +122,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
             tooltip: Optional.some('tooltip'),
             icon: Optional.none(),
             text: Optional.some('button4'),
+            search: Optional.none(),
             fetch: (callback) => {
               callback([
                 {
@@ -136,7 +138,7 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
               store.adder('onSetup.4')();
               return Fun.noop;
             }
-          }, 'tox-mbtn', helpers.backstage(), Optional.none())
+          }, 'tox-mbtn', extrasHook.access().extras.backstages.popup, Optional.none())
         ]
       }
     ]
@@ -330,6 +332,12 @@ describe('headless.tinymce.themes.silver.toolbar.ToolbarButtonsTest', () => {
     Mouse.clickOn(component.element, '.button3-container .tox-split-button .tox-tbtn');
     store.assertEq('Store should now have action3', [ 'onToggleAction.3' ]);
     store.clear();
+    assertSplitButtonDisabledState('Disabled', true, button3);
+    assertSplitButtonActiveState('Off still', false, button3);
+
+    // TINY-9504: The button is disabled now. Clicking on it should not call onAction callback.
+    Mouse.clickOn(component.element, '.button3-container .tox-split-button .tox-tbtn');
+    store.assertEq('Store should not have action3', [ ]);
     assertSplitButtonDisabledState('Disabled', true, button3);
     assertSplitButtonActiveState('Off still', false, button3);
   });

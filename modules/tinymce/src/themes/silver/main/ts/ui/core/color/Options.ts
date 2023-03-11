@@ -1,23 +1,23 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Transformations } from '@ephox/acid';
-import { Arr, Type } from '@ephox/katamari';
+import { Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { EditorOptions } from 'tinymce/core/api/OptionTypes';
 import { Menu } from 'tinymce/core/api/ui/Ui';
 
-import ColorCache from './ColorCache';
+const foregroundId = 'forecolor';
+const backgroundId = 'hilitecolor';
 
-const colorCache = ColorCache(10);
+const defaultCols = 5;
 
 const calcCols = (colors: number): number =>
-  Math.max(5, Math.ceil(Math.sqrt(colors)));
+  Math.max(defaultCols, Math.ceil(Math.sqrt(colors)));
+
+const calcColsOption = (editor: Editor, numColors: number): number => {
+  const calculatedCols = calcCols(numColors);
+  const fallbackCols = option('color_cols')(editor);
+  return defaultCols === calculatedCols ? fallbackCols : calculatedCols;
+};
 
 const mapColors = (colorMap: string[]): Menu.ChoiceMenuItemSpec[] => {
   const colors: Menu.ChoiceMenuItemSpec[] = [];
@@ -26,6 +26,7 @@ const mapColors = (colorMap: string[]): Menu.ChoiceMenuItemSpec[] => {
     colors.push({
       text: colorMap[i + 1],
       value: '#' + Transformations.anyToHex(colorMap[i]).value,
+      icon: 'checkmark',
       type: 'choiceitem'
     });
   }
@@ -34,22 +35,26 @@ const mapColors = (colorMap: string[]): Menu.ChoiceMenuItemSpec[] => {
 };
 
 const option: {
-  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K] | undefined;
-  <T>(name: string): (editor: Editor) => T | undefined;
+  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K];
+  <T>(name: string): (editor: Editor) => T;
 } = (name: string) => (editor: Editor) =>
   editor.options.get(name);
+
+const fallbackColor = '#000000';
 
 const register = (editor: Editor): void => {
   const registerOption = editor.options.register;
 
+  const colorProcessor = (value: any): any => {
+    if (Type.isArrayOf(value, Type.isString)) {
+      return { value: mapColors(value), valid: true };
+    } else {
+      return { valid: false, message: 'Must be an array of strings.' };
+    }
+  };
+
   registerOption('color_map', {
-    processor: (value) => {
-      if (Type.isArrayOf(value, Type.isString)) {
-        return { value: mapColors(value), valid: true };
-      } else {
-        return { valid: false, message: 'Must be an array of strings.' };
-      }
-    },
+    processor: colorProcessor,
     default: [
       '#BFEDD2', 'Light Green',
       '#FBEEB8', 'Light Yellow',
@@ -80,30 +85,74 @@ const register = (editor: Editor): void => {
     ]
   });
 
+  registerOption('color_map_background', {
+    processor: colorProcessor
+  });
+
+  registerOption('color_map_foreground', {
+    processor: colorProcessor
+  });
+
   registerOption('color_cols', {
     processor: 'number',
-    default: calcCols(getColors(editor).length)
+    default: calcCols(getColors(editor, 'default').length)
+  });
+
+  registerOption('color_cols_foreground', {
+    processor: 'number',
+    default: calcColsOption(editor, getColors(editor, foregroundId).length)
+  });
+
+  registerOption('color_cols_background', {
+    processor: 'number',
+    default: calcColsOption(editor, getColors(editor, backgroundId).length)
   });
 
   registerOption('custom_colors', {
     processor: 'boolean',
     default: true
   });
+
+  registerOption('color_default_foreground', {
+    processor: 'string',
+    default: fallbackColor
+  });
+
+  registerOption('color_default_background', {
+    processor: 'string',
+    default: fallbackColor
+  });
 };
 
-const getColorCols = option('color_cols');
+const colorColsOption = (editor: Editor, id: string): number => {
+  if (id === foregroundId) {
+    return option('color_cols_foreground')(editor);
+  } else if (id === backgroundId) {
+    return option('color_cols_background')(editor);
+  } else {
+    return option('color_cols')(editor);
+  }
+};
+
+const getColorCols = (editor: Editor, id: string): number => {
+  const colorCols = colorColsOption(editor, id);
+  return colorCols > 0 ? colorCols : defaultCols;
+};
+
 const hasCustomColors = option('custom_colors');
-const getColors = option<Menu.ChoiceMenuItemSpec[]>('color_map');
 
-const getCurrentColors = (): Menu.ChoiceMenuItemSpec[] => Arr.map(colorCache.state(), (color) => ({
-  type: 'choiceitem',
-  text: color,
-  value: color
-}));
-
-const addColor = (color: string) => {
-  colorCache.add(color);
+const getColors = (editor: Editor, id: string): Menu.ChoiceMenuItemSpec[] => {
+  if (id === foregroundId && editor.options.isSet('color_map_foreground')) {
+    return option<Menu.ChoiceMenuItemSpec[]>('color_map_foreground')(editor);
+  } else if (id === backgroundId && editor.options.isSet('color_map_background')) {
+    return option<Menu.ChoiceMenuItemSpec[]>('color_map_background')(editor);
+  } else {
+    return option<Menu.ChoiceMenuItemSpec[]>('color_map')(editor);
+  }
 };
+
+const getDefaultForegroundColor = option<string>('color_default_foreground');
+const getDefaultBackgroundColor = option<string>('color_default_background');
 
 export {
   register,
@@ -112,6 +161,7 @@ export {
   getColorCols,
   hasCustomColors,
   getColors,
-  getCurrentColors,
-  addColor
+  getDefaultBackgroundColor,
+  getDefaultForegroundColor,
+  fallbackColor
 };

@@ -1,7 +1,7 @@
 import { FocusTools, Keys } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
 import { SugarDocument } from '@ephox/sugar';
-import { TinyContentActions, TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
+import { TinyContentActions, TinyHooks, TinyUi, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/searchreplace/Plugin';
@@ -23,7 +23,7 @@ describe('browser.tinymce.plugins.searchreplace.SearchReplaceKeyboardNavigationT
   const doc = SugarDocument.getDocument();
 
   const pressTab = (editor: Editor) => TinyUiActions.keydown(editor, Keys.tab());
-  const pressEsc = (editor: Editor) => TinyUiActions.keydown(editor, Keys.escape());
+  const pressEsc = (editor: Editor) => TinyUiActions.keyup(editor, Keys.escape());
   const pressDown = (editor: Editor) => TinyUiActions.keydown(editor, Keys.down());
   const pressRight = (editor: Editor) => TinyUiActions.keydown(editor, Keys.right());
   const pressEnter = (editor: Editor) => TinyUiActions.keydown(editor, Keys.enter());
@@ -93,8 +93,7 @@ describe('browser.tinymce.plugins.searchreplace.SearchReplaceKeyboardNavigationT
     await pAssertFocused('Find input', '.tox-textfield[placeholder="Find"]');
     await Utils.pSetFieldValue(editor, 'input.tox-textfield[placeholder="Find"]', 'notfound');
     pressEnter(editor);
-    await pAssertFocused('Alert dialog OK button', '.tox-alert-dialog .tox-button[title="OK"]');
-    pressEnter(editor);
+    await TinyUi(editor).pWaitForUi('.tox-notification.tox-notification--error:contains("Could not find the specified string.")');
     await pAssertFocused('Find input', '.tox-textfield[placeholder="Find"]');
     pressEsc(editor);
   });

@@ -1,22 +1,15 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional, Type } from '@ephox/katamari';
-import { SugarElement } from '@ephox/sugar';
+import { Attribute, Css, Html, Insert, Remove, SugarElement, SugarShadowDom } from '@ephox/sugar';
 
 import Editor from '../api/Editor';
 import AstNode from '../api/html/Node';
 import * as Options from '../api/Options';
 import Tools from '../api/util/Tools';
-import { isWsPreserveElement } from '../dom/ElementType';
+import * as ElementType from '../dom/ElementType';
 import * as TrimHtml from '../dom/TrimHtml';
 import * as Zwsp from '../text/Zwsp';
-import { Content, ContentFormat, GetContentArgs } from './ContentTypes';
-import { postProcessGetContent, preProcessGetContent } from './PrePostProcess';
+import { cleanupBogusElements, cleanupInputNames } from './ContentCleanup';
+import { Content, GetContentArgs } from './ContentTypes';
 
 const trimEmptyContents = (editor: Editor, html: string): string => {
   const blockName = Options.getForcedRootBlock(editor);
@@ -24,38 +17,51 @@ const trimEmptyContents = (editor: Editor, html: string): string => {
   return html.replace(emptyRegExp, '');
 };
 
-const setupArgs = (args: Partial<GetContentArgs>, format: ContentFormat): GetContentArgs => ({
-  ...args,
-  format,
-  get: true,
-  getInner: true
-});
+const getPlainTextContent = (editor: Editor, body: HTMLElement) => {
+  const doc = editor.getDoc();
+  const dos = SugarShadowDom.getRootNode(SugarElement.fromDom(editor.getBody()));
 
-const getContentFromBody = (editor: Editor, args: Partial<GetContentArgs>, format: ContentFormat, body: HTMLElement): Content => {
-  const defaultedArgs = setupArgs(args, format);
-  return preProcessGetContent(editor, defaultedArgs).fold(Fun.identity, (updatedArgs) => {
-    let content: Content;
-    if (updatedArgs.format === 'raw') {
-      content = Tools.trim(TrimHtml.trimExternal(editor.serializer, body.innerHTML));
-    } else if (updatedArgs.format === 'text') {
-      // return empty string for text format when editor is empty to avoid bogus elements being returned in content
-      content = editor.dom.isEmpty(body) ? '' : Zwsp.trim(body.innerText || body.textContent);
-    } else if (updatedArgs.format === 'tree') {
-      content = editor.serializer.serialize(body, updatedArgs);
-    } else {
-      content = trimEmptyContents(editor, editor.serializer.serialize(body, updatedArgs));
-    }
-
-    // Trim if not using a whitespace preserve format/element
-    const shouldTrim = updatedArgs.format !== 'text' && !isWsPreserveElement(SugarElement.fromDom(body));
-    const trimmedContent = shouldTrim && Type.isString(content) ? Tools.trim(content) : content;
-
-    return postProcessGetContent(editor, trimmedContent, updatedArgs);
+  const offscreenDiv = SugarElement.fromTag('div', doc);
+  Attribute.set(offscreenDiv, 'data-mce-bogus', 'all');
+  Css.setAll(offscreenDiv, {
+    position: 'fixed',
+    left: '-9999999px',
+    top: '0'
   });
+  Html.set(offscreenDiv, body.innerHTML);
+
+  cleanupBogusElements(offscreenDiv);
+  cleanupInputNames(offscreenDiv);
+  // Append the wrapper element so that the browser will evaluate styles when getting the `innerText`
+  const root = SugarShadowDom.getContentContainer(dos);
+  Insert.append(root, offscreenDiv);
+
+  const content = Zwsp.trim(offscreenDiv.dom.innerText);
+  Remove.remove(offscreenDiv);
+
+  return content;
 };
 
-export const getContentInternal = (editor: Editor, args: Partial<GetContentArgs>, format: ContentFormat): Content => Optional.from(editor.getBody())
+const getContentFromBody = (editor: Editor, args: GetContentArgs, body: HTMLElement): Content => {
+  let content: Content;
+
+  if (args.format === 'raw') {
+    content = Tools.trim(TrimHtml.trimExternal(editor.serializer, body.innerHTML));
+  } else if (args.format === 'text') {
+    content = getPlainTextContent(editor, body);
+  } else if (args.format === 'tree') {
+    content = editor.serializer.serialize(body, args);
+  } else {
+    content = trimEmptyContents(editor, editor.serializer.serialize(body, args));
+  }
+
+  // Trim if not using a whitespace preserve format/element
+  const shouldTrim = args.format !== 'text' && !ElementType.isWsPreserveElement(SugarElement.fromDom(body));
+  return shouldTrim && Type.isString(content) ? Tools.trim(content) : content;
+};
+
+export const getContentInternal = (editor: Editor, args: GetContentArgs): Content => Optional.from(editor.getBody())
   .fold(
     Fun.constant(args.format === 'tree' ? new AstNode('body', 11) : ''),
-    (body) => getContentFromBody(editor, args, format, body)
+    (body) => getContentFromBody(editor, args, body)
   );

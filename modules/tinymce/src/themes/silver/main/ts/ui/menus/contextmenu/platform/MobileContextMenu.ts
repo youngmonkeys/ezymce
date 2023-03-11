@@ -1,11 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { AlloyComponent, Bubble, InlineView, Layout, LayoutInset, MaxHeight, MaxWidth } from '@ephox/alloy';
+import { AlloyComponent, Bubble, InlineView, Layout, LayoutInset, MaxHeight, MaxWidth, TieredMenuTypes } from '@ephox/alloy';
 import { Optional } from '@ephox/katamari';
 import { PlatformDetection } from '@ephox/sand';
 import { SimSelection, WindowSelection } from '@ephox/sugar';
@@ -108,21 +101,36 @@ const getAnchorSpec = (editor: Editor, e: EditorEvent<TouchEvent>, anchorType: C
 const show = (editor: Editor, e: EditorEvent<TouchEvent>, items: MenuItems, backstage: UiFactoryBackstage, contextmenu: AlloyComponent, anchorType: Coords.AnchorType, highlightImmediately: boolean) => {
   const anchorSpec = getAnchorSpec(editor, e, anchorType);
 
-  NestedMenus.build(items, ItemResponse.CLOSE_ON_EXECUTE, backstage, true).map((menuData) => {
+  NestedMenus.build(
+    items,
+    ItemResponse.CLOSE_ON_EXECUTE,
+    backstage,
+    {
+      // MobileContextMenus are the *only* horizontal menus currently (2022-08-16)
+      isHorizontalMenu: true,
+      search: Optional.none()
+    }
+  ).map((menuData) => {
     e.preventDefault();
+
+    // If we are highlighting immediately, then we want to highlight the menu
+    // and the item. Otherwise, we don't want to highlight anything.
+    const highlightOnOpen = highlightImmediately
+      ? TieredMenuTypes.HighlightOnOpen.HighlightMenuAndItem
+      : TieredMenuTypes.HighlightOnOpen.HighlightNone;
 
     // Show the context menu, with items set to close on click
     InlineView.showMenuWithinBounds(contextmenu, { anchor: anchorSpec }, {
       menu: {
         markers: MenuParts.markers('normal'),
-        highlightImmediately
+        highlightOnOpen
       },
       data: menuData,
       type: 'horizontal'
     }, () => Optional.some(getContextToolbarBounds(editor, backstage.shared, anchorType === 'node' ? 'node' : 'selection')));
 
     // Ensure the context toolbar is hidden
-    editor.fire(hideContextToolbarEvent);
+    editor.dispatch(hideContextToolbarEvent);
   });
 };
 

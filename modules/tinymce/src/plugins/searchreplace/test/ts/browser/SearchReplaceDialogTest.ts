@@ -1,5 +1,7 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
+import { Css, Scroll } from '@ephox/sugar';
+import { TinyAssertions, TinyDom, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
+import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/searchreplace/Plugin';
@@ -93,5 +95,34 @@ describe('browser.tinymce.plugins.searchreplace.SearchReplaceDialogTest', () => 
     assertFound(editor, 0);
     findAndAssertFound(editor, 2);
     TinyUiActions.closeDialog(editor);
+  });
+
+  it('TINY-2884: Test no content selected with keyboard', async () => {
+    const editor = hook.editor();
+    editor.setContent('<p>fish fish fish</p>');
+    await Utils.pOpenDialogWithKeyboard(editor);
+    await Utils.pAssertFieldValue(editor, 'input.tox-textfield[placeholder="Find"]', '');
+    TinyUiActions.closeDialog(editor);
+  });
+
+  it('TINY-2884: Test some content selected with keyboard', async () => {
+    const editor = hook.editor();
+    editor.setContent('<p>fish fish fish</p>');
+    TinySelections.setSelection(editor, [ 0, 0 ], 5, [ 0, 0 ], 9);
+    await Utils.pOpenDialogWithKeyboard(editor);
+    await Utils.pAssertFieldValue(editor, 'input.tox-textfield[placeholder="Find"]', 'fish');
+    findAndAssertFound(editor, 3);
+    TinyUiActions.closeDialog(editor);
+  });
+
+  it('TINY-9148: Scroll should remain in place after the dialog is closed', async () => {
+    const editor = hook.editor();
+    Css.set(TinyDom.container(editor), 'margin', '1000px 0');
+    editor.setContent('<p>top</p><p style="height: 2000px"></p><p>bottom</p>');
+    const doc = TinyDom.document(editor);
+    await Utils.pOpenDialog(editor);
+    const initialScroll = Scroll.get(doc);
+    TinyUiActions.closeDialog(editor);
+    assert.equal(initialScroll.top, Scroll.get(doc).top);
   });
 });

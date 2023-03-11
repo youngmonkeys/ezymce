@@ -1,11 +1,4 @@
 //
-// Copyright (c) Tiny Technologies, Inc. All rights reserved.
-// Licensed under the LGPL or a commercial license.
-// For LGPL see License.txt in the project root for license information.
-// For commercial licenses see https://www.tiny.cloud/
-//
-
-//
 // Button
 //
 
@@ -42,6 +35,7 @@
 @button-focus-border-color: @button-hover-border-color;
 @button-focus-box-shadow: @button-hover-box-shadow;
 @button-focus-text-color: @button-hover-text-color;
+@button-focus-outline: inset 0 0 0 2px @color-white, 0 0 0 1px @color-tint, 0 0 0 3px fade(@color-tint, 25%);
 
 @button-hover-background-color: darken(@button-background-color, 5%);
 @button-hover-background-image: @button-background-image;
@@ -79,10 +73,24 @@
     margin: 0;
     outline: none;
     padding: @button-padding-y @button-padding-x;
+    position: relative;
     text-align: @button-text-align;
     text-decoration: @button-text-decoration;
     text-transform: @button-text-transform;
     white-space: nowrap;
+
+    &::before {
+      border-radius: @button-border-radius;
+      bottom: -@button-border-width;
+      box-shadow: @button-focus-outline;
+      content: '';
+      left: -@button-border-width;
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      right: -@button-border-width;
+      top: -@button-border-width;
+    }
 
     &[disabled] {
       background-color: @button-disabled-background-color;
@@ -101,6 +109,12 @@
       color: @button-focus-text-color;
     }
 
+    &:focus-visible:not(:disabled) {
+      &::before {
+        opacity: 1;
+      }
+    }
+
     &:hover:not(:disabled) {
       background-color: @button-hover-background-color;
       background-image: @button-hover-background-image;
@@ -115,6 +129,24 @@
       border-color: @button-active-border-color;
       box-shadow: @button-active-box-shadow;
       color: @button-active-text-color;
+    }
+
+    &.tox-button--enabled,
+    &.tox-button--enabled:hover {
+      background: @toolbar-button-enabled-background-color;
+      border-width: @button-border-width;
+      box-shadow: @button-active-box-shadow;
+      color: @toolbar-button-enabled-text-color;
+
+      > * {
+        transform: @toolbar-button-enabled-transform;
+      }
+
+      // Disable stylelint below because we're mixing the :hover modifier with the "--enabled" class
+      // since they need to be kept the same/use the same rules
+      svg { /* stylelint-disable-line no-descending-specificity */
+        fill: @toolbar-button-enabled-icon-color;
+      }
     }
   }
 }

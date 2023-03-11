@@ -1,16 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun } from '@ephox/katamari';
 
 import Editor from '../api/Editor';
 import Env from '../api/Env';
 import * as Options from '../api/Options';
 import Delay from '../api/util/Delay';
+import { EditorEvent } from '../api/util/EventDispatcher';
 import Tools from '../api/util/Tools';
 import VK from '../api/util/VK';
 import * as CaretContainer from '../caret/CaretContainer';
@@ -40,9 +34,9 @@ const Quirks = (editor: Editor): Quirks => {
   /**
    * Executes a command with a specific state this can be to enable/disable browser editing features.
    */
-  const setEditorCommandState = (cmd, state) => {
+  const setEditorCommandState = (cmd: string, state: string | boolean) => {
     try {
-      editor.getDoc().execCommand(cmd, false, state);
+      editor.getDoc().execCommand(cmd, false, String(state));
     } catch (ex) {
       // Ignore
     }
@@ -55,7 +49,7 @@ const Quirks = (editor: Editor): Quirks => {
    * @param {Event} e Event object.
    * @return {Boolean} true/false if the event is prevented or not.
    */
-  const isDefaultPrevented = (e) => {
+  const isDefaultPrevented = (e: EditorEvent<unknown>) => {
     return e.isDefaultPrevented();
   };
 
@@ -72,14 +66,14 @@ const Quirks = (editor: Editor): Quirks => {
    * [<h1></h1>]
    */
   const emptyEditorWhenDeleting = () => {
-    const serializeRng = (rng) => {
+    const serializeRng = (rng: Range) => {
       const body = dom.create('body');
       const contents = rng.cloneContents();
       body.appendChild(contents);
       return selection.serializer.serialize(body, { format: 'html' });
     };
 
-    const allContentsSelected = (rng) => {
+    const allContentsSelected = (rng: Range) => {
       const selection = serializeRng(rng);
 
       const allRng = dom.createRng();
@@ -91,12 +85,11 @@ const Quirks = (editor: Editor): Quirks => {
 
     editor.on('keydown', (e) => {
       const keyCode = e.keyCode;
-      let isCollapsed, body;
 
       // Empty the editor if it's needed for example backspace at <p><b>|</b></p>
-      if (!isDefaultPrevented(e) && (keyCode === DELETE || keyCode === BACKSPACE)) {
-        isCollapsed = editor.selection.isCollapsed();
-        body = editor.getBody();
+      if (!isDefaultPrevented(e) && (keyCode === DELETE || keyCode === BACKSPACE) && editor.selection.isEditable()) {
+        const isCollapsed = editor.selection.isCollapsed();
+        const body = editor.getBody();
 
         // Selection is collapsed but the editor isn't empty
         if (isCollapsed && !dom.isEmpty(body)) {
@@ -235,19 +228,20 @@ const Quirks = (editor: Editor): Quirks => {
    * by clicking on them so we need to fake that.
    */
   const selectControlElements = () => {
+    const visualAidsAnchorClass = Options.getVisualAidsAnchorClass(editor);
     editor.on('click', (e) => {
       const target = e.target;
 
       // Workaround for bug, http://bugs.webkit.org/show_bug.cgi?id=12250
       // WebKit can't even do simple things like selecting an image
       // Needs to be the setBaseAndExtend or it will fail to select floated images
-      if (/^(IMG|HR)$/.test(target.nodeName) && dom.getContentEditableParent(target) !== 'false') {
+      if (/^(IMG|HR)$/.test(target.nodeName) && dom.isEditable(target.parentNode)) {
         e.preventDefault();
         editor.selection.select(target);
         editor.nodeChanged();
       }
 
-      if (target.nodeName === 'A' && dom.hasClass(target, 'mce-item-anchor')) {
+      if (target.nodeName === 'A' && dom.hasClass(target, visualAidsAnchorClass) && target.childNodes.length === 0 && dom.isEditable(target.parentNode)) {
         e.preventDefault();
         selection.select(target);
       }
@@ -268,7 +262,7 @@ const Quirks = (editor: Editor): Quirks => {
    */
   const removeStylesWhenDeletingAcrossBlockElements = () => {
     const getAttributeApplyFunction = () => {
-      const template = dom.getAttribs(selection.getStart().cloneNode(false));
+      const template = dom.getAttribs(selection.getStart().cloneNode(false) as Element);
 
       return () => {
         const target = selection.getStart();
@@ -293,18 +287,18 @@ const Quirks = (editor: Editor): Quirks => {
 
       if (!isDefaultPrevented(e) && (e.keyCode === 8 || e.keyCode === 46) && isSelectionAcrossElements()) {
         applyAttributes = getAttributeApplyFunction();
-        editor.getDoc().execCommand('delete', false, null);
+        editor.getDoc().execCommand('delete', false);
         applyAttributes();
         e.preventDefault();
         return false;
+      } else {
+        return true;
       }
     });
 
     dom.bind(editor.getDoc(), 'cut', (e) => {
-      let applyAttributes;
-
       if (!isDefaultPrevented(e) && isSelectionAcrossElements()) {
-        applyAttributes = getAttributeApplyFunction();
+        const applyAttributes = getAttributeApplyFunction();
 
         Delay.setEditorTimeout(editor, () => {
           applyAttributes();
@@ -328,6 +322,7 @@ const Quirks = (editor: Editor): Quirks => {
           }
         }
       }
+      return true;
     });
   };
 
@@ -343,30 +338,28 @@ const Quirks = (editor: Editor): Quirks => {
   const removeBlockQuoteOnBackSpace = () => {
     // Add block quote deletion handler
     editor.on('keydown', (e) => {
-      let rng, parent;
-
       if (isDefaultPrevented(e) || e.keyCode !== VK.BACKSPACE) {
         return;
       }
 
-      rng = selection.getRng();
+      let rng = selection.getRng();
       const container = rng.startContainer;
       const offset = rng.startOffset;
       const root = dom.getRoot();
-      parent = container;
+      let parent = container;
 
       if (!rng.collapsed || offset !== 0) {
         return;
       }
 
-      while (parent && parent.parentNode && parent.parentNode.firstChild === parent && parent.parentNode !== root) {
+      while (parent.parentNode && parent.parentNode.firstChild === parent && parent.parentNode !== root) {
         parent = parent.parentNode;
       }
 
       // Is the cursor at the beginning of a blockquote?
-      if (parent.tagName === 'BLOCKQUOTE') {
+      if (parent.nodeName === 'BLOCKQUOTE') {
         // Remove the blockquote
-        editor.formatter.toggle('blockquote', null, parent);
+        editor.formatter.toggle('blockquote', undefined, parent);
 
         // Move the caret to the beginning of container
         rng = dom.createRng();
@@ -409,13 +402,13 @@ const Quirks = (editor: Editor): Quirks => {
    */
   const addBrAfterLastLinks = () => {
     const fixLinks = () => {
-      each(dom.select('a'), (node) => {
-        let parentNode: Node = node.parentNode;
+      each(dom.select('a:not([data-mce-block])'), (node) => {
+        let parentNode: Node | null = node.parentNode;
         const root = dom.getRoot();
 
-        if (parentNode.lastChild === node) {
+        if (parentNode?.lastChild === node) {
           while (parentNode && !dom.isBlock(parentNode)) {
-            if (parentNode.parentNode.lastChild !== parentNode || parentNode === root) {
+            if (parentNode.parentNode?.lastChild !== parentNode || parentNode === root) {
               return;
             }
 
@@ -439,11 +432,15 @@ const Quirks = (editor: Editor): Quirks => {
    * default we want to change that behavior.
    */
   const setDefaultBlockType = () => {
-    if (Options.getForcedRootBlock(editor)) {
-      editor.on('init', () => {
-        setEditorCommandState('DefaultParagraphSeparator', Options.getForcedRootBlock(editor));
-      });
-    }
+    editor.on('init', () => {
+      setEditorCommandState('DefaultParagraphSeparator', Options.getForcedRootBlock(editor));
+    });
+  };
+
+  const isAllContentSelected = (editor: Editor): boolean => {
+    const body = editor.getBody();
+    const rng = editor.selection.getRng();
+    return rng.startContainer === rng.endContainer && rng.startContainer === body && rng.startOffset === 0 && rng.endOffset === body.childNodes.length;
   };
 
   /**
@@ -456,7 +453,8 @@ const Quirks = (editor: Editor): Quirks => {
       // no point to exclude Ctrl+A, since normalization will still run after Ctrl will be unpressed
       // better exclude any key combinations with the modifiers to avoid double normalization
       // (also addresses TINY-1130)
-      if (!VK.modifierPressed(e)) {
+      // The use of isAllContentSelected addresses TINY-4550
+      if (!VK.modifierPressed(e) && !isAllContentSelected(editor)) {
         selection.normalize();
       }
     }, true);
@@ -599,7 +597,7 @@ const Quirks = (editor: Editor): Quirks => {
           args[key] = endTouch[key];
         });
 
-        args = editor.fire('click', args);
+        args = editor.dispatch('click', args);
 
         if (!args.isDefaultPrevented()) {
           // iOS WebKit can't place the caret properly once

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional, Strings } from '@ephox/katamari';
 import { Attribute, Class, SugarElement } from '@ephox/sugar';
 
@@ -13,6 +6,11 @@ import Editor from '../api/Editor';
 import * as Options from '../api/Options';
 import { TranslatedString } from '../api/util/I18n';
 import * as InitContentBody from './InitContentBody';
+
+interface BoxInfo {
+  readonly editorContainer: HTMLElement | null;
+  readonly iframeContainer: HTMLElement;
+}
 
 const DOM = DOMUtils.DOM;
 
@@ -63,14 +61,14 @@ const getIframeHtml = (editor: Editor) => {
   return iframeHTML;
 };
 
-const createIframe = (editor: Editor, boxInfo) => {
+const createIframe = (editor: Editor, boxInfo: BoxInfo) => {
   const iframeTitle = editor.translate('Rich Text Area');
   const tabindex = Attribute.getOpt(SugarElement.fromDom(editor.getElement()), 'tabindex').bind(Strings.toInt);
   const ifr = createIframeElement(editor.id, iframeTitle, Options.getIframeAttrs(editor), tabindex).dom;
 
   ifr.onload = () => {
     ifr.onload = null;
-    editor.fire('load');
+    editor.dispatch('load');
   };
 
   editor.contentAreaContainer = boxInfo.iframeContainer;
@@ -79,11 +77,11 @@ const createIframe = (editor: Editor, boxInfo) => {
   DOM.add(boxInfo.iframeContainer, ifr);
 };
 
-const init = (editor: Editor, boxInfo) => {
+const init = (editor: Editor, boxInfo: BoxInfo): void => {
   createIframe(editor, boxInfo);
 
   if (boxInfo.editorContainer) {
-    DOM.get(boxInfo.editorContainer).style.display = editor.orgDisplay;
+    boxInfo.editorContainer.style.display = editor.orgDisplay;
     editor.hidden = DOM.isHidden(boxInfo.editorContainer);
   }
 

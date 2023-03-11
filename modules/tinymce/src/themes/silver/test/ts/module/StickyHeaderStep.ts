@@ -12,21 +12,21 @@ import * as MenuUtils from './MenuUtils';
 import * as PageScroll from './PageScroll';
 import * as StickyUtils from './StickyHeaderUtils';
 
-const testStickyHeader = (toolbarMode: ToolbarMode, toolbarLocation: ToolbarLocation) => {
+const testStickyHeader = (toolbarMode: ToolbarMode, toolbarLocation: ToolbarLocation): void => {
   const isToolbarTop = toolbarLocation === ToolbarLocation.top;
 
   context('Test editor with toolbar_mode: ' + toolbarMode, () => {
     const hook = TinyHooks.bddSetup<Editor>({
       plugins: 'fullscreen',
       base_url: '/project/tinymce/js/tinymce',
-      toolbar: 'align | fontsizeselect | fontselect | formatselect | styleselect | insertfile | forecolor | backcolor ',
+      toolbar: 'align | fontsize | fontfamily | blocks | styles | insertfile | forecolor | backcolor ',
       resize: 'both',
       min_height: 300,
-      min_width: 300,
+      min_width: 350,
       height: 400,
-      width: 400,
+      width: 500,
       max_height: 500,
-      max_width: 500,
+      max_width: 550,
       toolbar_mode: toolbarMode,
       toolbar_location: toolbarLocation,
       toolbar_sticky: true,

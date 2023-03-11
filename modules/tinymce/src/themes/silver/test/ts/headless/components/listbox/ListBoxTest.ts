@@ -11,13 +11,13 @@ import * as RepresentingUtils from '../../../module/RepresentingUtils';
 import * as TestExtras from '../../../module/TestExtras';
 
 describe('headless.tinymce.themes.silver.components.listbox.ListBoxTest', () => {
-  const helpers = TestExtras.bddSetup();
+  const extrasHook = TestExtras.bddSetup();
 
   const hook = TestHelpers.GuiSetup.bddSetup((_store, _doc, _body) => GuiFactory.build(
     renderListBox({
       name: 'selector',
       label: Optional.some('selector'),
-      disabled: false,
+      enabled: true,
       items: [
         { value: 'one', text: 'One' },
         { value: 'two', text: 'Two' },
@@ -25,7 +25,7 @@ describe('headless.tinymce.themes.silver.components.listbox.ListBoxTest', () => 
           { value: 'three', text: 'Three' }
         ] }
       ]
-    }, helpers.backstage())
+    }, extrasHook.access().extras.backstages.popup, Optional.none())
   ));
 
   const assertValue = (component: AlloyComponent, expected: string) => {
@@ -92,7 +92,8 @@ describe('headless.tinymce.themes.silver.components.listbox.ListBoxTest', () => 
     const component = hook.component();
     const doc = hook.root();
     const gui = hook.gui();
-    const sink = helpers.sink();
+    const sink = extrasHook.access().getPopupSink();
+    Representing.setValue(component, 'three');
 
     Mouse.clickOn(gui.element, '.tox-listbox');
     await UiFinder.pWaitFor('Waiting for menu to appear', sink, '.tox-menu .tox-collection__item');

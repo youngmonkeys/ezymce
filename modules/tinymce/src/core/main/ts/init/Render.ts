@@ -1,20 +1,13 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr, Fun, Obj, Optional, Optionals, Type } from '@ephox/katamari';
+import { Arr, Obj, Optional, Optionals, Strings, Type } from '@ephox/katamari';
 import { Attribute, SugarElement } from '@ephox/sugar';
 
-import { UrlObject } from '../api/AddOnManager';
 import DOMUtils from '../api/dom/DOMUtils';
 import EventUtils from '../api/dom/EventUtils';
 import ScriptLoader from '../api/dom/ScriptLoader';
 import StyleSheetLoader from '../api/dom/StyleSheetLoader';
 import Editor from '../api/Editor';
 import IconManager from '../api/IconManager';
+import ModelManager from '../api/ModelManager';
 import NotificationManager from '../api/NotificationManager';
 import * as Options from '../api/Options';
 import PluginManager from '../api/PluginManager';
@@ -27,61 +20,62 @@ import * as StyleSheetLoaderRegistry from '../dom/StyleSheetLoaderRegistry';
 import * as ErrorReporter from '../ErrorReporter';
 import * as Init from './Init';
 
+interface UrlMeta {
+  readonly url: string;
+  readonly name: Optional<string>;
+}
+
 const DOM = DOMUtils.DOM;
 
-const hasSkipLoadPrefix = (name) => {
-  return name.charAt(0) === '-';
-};
+const hasSkipLoadPrefix = (name: string) => name.charAt(0) === '-';
 
-const loadLanguage = (scriptLoader, editor: Editor) => {
+const loadLanguage = (scriptLoader: ScriptLoader, editor: Editor) => {
   const languageCode = Options.getLanguageCode(editor);
   const languageUrl = Options.getLanguageUrl(editor);
 
-  if (I18n.hasCode(languageCode) === false && languageCode !== 'en') {
-    const url = languageUrl !== '' ? languageUrl : editor.editorManager.baseURL + '/langs/' + languageCode + '.js';
+  if (!I18n.hasCode(languageCode) && languageCode !== 'en') {
+    const url = Strings.isNotEmpty(languageUrl) ? languageUrl : `${editor.editorManager.baseURL}/langs/${languageCode}.js`;
 
-    scriptLoader.add(url, Fun.noop, undefined, () => {
+    scriptLoader.add(url).catch(() => {
       ErrorReporter.languageLoadError(editor, url, languageCode);
     });
   }
 };
 
-const loadTheme = (scriptLoader: ScriptLoader, editor: Editor, suffix, callback) => {
+const loadTheme = (editor: Editor, suffix: string): void => {
   const theme = Options.getTheme(editor);
 
-  if (Type.isString(theme)) {
-    if (!hasSkipLoadPrefix(theme) && !Obj.has(ThemeManager.urls, theme)) {
-      const themeUrl = Options.getThemeUrl(editor);
-
-      if (themeUrl) {
-        ThemeManager.load(theme, editor.documentBaseURI.toAbsolute(themeUrl));
-      } else {
-        ThemeManager.load(theme, 'themes/' + theme + '/theme' + suffix + '.js');
-      }
-    }
-
-    scriptLoader.loadQueue(() => {
-      ThemeManager.waitFor(theme, callback);
+  if (Type.isString(theme) && !hasSkipLoadPrefix(theme) && !Obj.has(ThemeManager.urls, theme)) {
+    const themeUrl = Options.getThemeUrl(editor);
+    const url = themeUrl ? editor.documentBaseURI.toAbsolute(themeUrl) : `themes/${theme}/theme${suffix}.js`;
+    ThemeManager.load(theme, url).catch(() => {
+      ErrorReporter.themeLoadError(editor, url, theme);
     });
-  } else {
-    callback();
   }
 };
 
-interface UrlMeta {
-  url: string;
-  name: Optional<string>;
-}
+const loadModel = (editor: Editor, suffix: string): void => {
+  // Special case the 'wait for model' code if a plugin is responsible for it
+  // as the plugin will provide the instance instead
+  const model = Options.getModel(editor);
+  if (model !== 'plugin' && !Obj.has(ModelManager.urls, model)) {
+    const modelUrl = Options.getModelUrl(editor);
+    const url = Type.isString(modelUrl) ? editor.documentBaseURI.toAbsolute(modelUrl) : `models/${model}/model${suffix}.js`;
+    ModelManager.load(model, url).catch(() => {
+      ErrorReporter.modelLoadError(editor, url, model);
+    });
+  }
+};
 
 const getIconsUrlMetaFromUrl = (editor: Editor): Optional<UrlMeta> => Optional.from(Options.getIconsUrl(editor))
-  .filter((url) => url.length > 0)
+  .filter(Strings.isNotEmpty)
   .map((url) => ({
     url,
     name: Optional.none()
   }));
 
 const getIconsUrlMetaFromName = (editor: Editor, name: string | undefined, suffix: string): Optional<UrlMeta> => Optional.from(name)
-  .filter((name) => name.length > 0 && !IconManager.has(name))
+  .filter((name) => Strings.isNotEmpty(name) && !IconManager.has(name))
   .map((name) => ({
     url: `${editor.editorManager.baseURL}/icons/${name}/icons${suffix}.js`,
     name: Optional.some(name)
@@ -92,57 +86,60 @@ const loadIcons = (scriptLoader: ScriptLoader, editor: Editor, suffix: string) =
   const customIconsUrl = getIconsUrlMetaFromUrl(editor).orThunk(() => getIconsUrlMetaFromName(editor, Options.getIconPackName(editor), ''));
 
   Arr.each(Optionals.cat([ defaultIconsUrl, customIconsUrl ]), (urlMeta) => {
-    scriptLoader.add(urlMeta.url, Fun.noop, undefined, () => {
+    scriptLoader.add(urlMeta.url).catch(() => {
       ErrorReporter.iconsLoadError(editor, urlMeta.url, urlMeta.name.getOrUndefined());
     });
   });
 };
 
 const loadPlugins = (editor: Editor, suffix: string) => {
-  Tools.each(Options.getExternalPlugins(editor), (url: string, name: string): void => {
-    PluginManager.load(name, url, Fun.noop, undefined, () => {
+  const loadPlugin = (name: string, url: string) => {
+    PluginManager.load(name, url).catch(() => {
       ErrorReporter.pluginLoadError(editor, url, name);
     });
-    editor.options.set('plugins', Options.getPlugins(editor) + ' ' + name);
+  };
+
+  Obj.each(Options.getExternalPlugins(editor), (url, name) => {
+    loadPlugin(name, url);
+    editor.options.set('plugins', Options.getPlugins(editor).concat(name));
   });
 
-  Tools.each(Options.getPlugins(editor).split(/[ ,]/), (plugin) => {
+  Arr.each(Options.getPlugins(editor), (plugin) => {
     plugin = Tools.trim(plugin);
 
-    if (plugin && !PluginManager.urls[plugin]) {
-      if (!hasSkipLoadPrefix(plugin)) {
-        const url: UrlObject = {
-          prefix: 'plugins/',
-          resource: plugin,
-          suffix: '/plugin' + suffix + '.js'
-        };
-
-        PluginManager.load(plugin, url, Fun.noop, undefined, () => {
-          ErrorReporter.pluginLoadError(editor, url.prefix + url.resource + url.suffix, plugin);
-        });
-      }
+    if (plugin && !PluginManager.urls[plugin] && !hasSkipLoadPrefix(plugin)) {
+      loadPlugin(plugin, `plugins/${plugin}/plugin${suffix}.js`);
     }
   });
+};
+
+const isThemeLoaded = (editor: Editor): boolean => {
+  const theme = Options.getTheme(editor);
+  return !Type.isString(theme) || Type.isNonNullable(ThemeManager.get(theme));
+};
+
+const isModelLoaded = (editor: Editor): boolean => {
+  const model = Options.getModel(editor);
+  return Type.isNonNullable(ModelManager.get(model));
 };
 
 const loadScripts = (editor: Editor, suffix: string) => {
   const scriptLoader = ScriptLoader.ScriptLoader;
 
-  loadTheme(scriptLoader, editor, suffix, () => {
-    loadLanguage(scriptLoader, editor);
-    loadIcons(scriptLoader, editor, suffix);
-    loadPlugins(editor, suffix);
+  const initEditor = () => {
+    // If the editor has been destroyed or the theme and model haven't loaded then
+    // don't continue to load the editor
+    if (!editor.removed && isThemeLoaded(editor) && isModelLoaded(editor)) {
+      Init.init(editor);
+    }
+  };
 
-    scriptLoader.loadQueue(() => {
-      if (!editor.removed) {
-        Init.init(editor);
-      }
-    }, editor, () => {
-      if (!editor.removed) {
-        Init.init(editor);
-      }
-    });
-  });
+  loadTheme(editor, suffix);
+  loadModel(editor, suffix);
+  loadLanguage(scriptLoader, editor);
+  loadIcons(scriptLoader, editor, suffix);
+  loadPlugins(editor, suffix);
+  scriptLoader.loadQueue().then(initEditor, initEditor);
 };
 
 const getStyleSheetLoader = (element: SugarElement<Element>, editor: Editor): StyleSheetLoader =>
@@ -151,7 +148,7 @@ const getStyleSheetLoader = (element: SugarElement<Element>, editor: Editor): St
     referrerPolicy: Options.getReferrerPolicy(editor)
   });
 
-const render = (editor: Editor) => {
+const render = (editor: Editor): void => {
   const id = editor.id;
 
   // The user might have bundled multiple language packs so we need to switch the active code to the user specified language
@@ -206,7 +203,7 @@ const render = (editor: Editor) => {
 
     // Pass submit/reset from form to editor instance
     editor.formEventDelegate = (e) => {
-      editor.fire(e.type, e);
+      editor.dispatch(e.type, e);
     };
 
     DOM.bind(form, 'submit reset', editor.formEventDelegate);
@@ -233,7 +230,7 @@ const render = (editor: Editor) => {
 
   if (Options.isEncodingXml(editor)) {
     editor.on('GetContent', (e) => {
-      if (e.save && Type.isString(e.content)) {
+      if (e.save) {
         e.content = DOM.encode(e.content);
       }
     });

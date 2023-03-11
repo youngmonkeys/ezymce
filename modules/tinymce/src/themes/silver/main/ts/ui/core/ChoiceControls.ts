@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun, Optional, Optionals, Singleton, Type } from '@ephox/katamari';
 import { Attribute, Dimension, SugarElement, SugarNode, TransformFind } from '@ephox/sugar';
 
@@ -104,7 +97,7 @@ const languageSpec = (editor: Editor): Optional<ControlSpec<ContentLanguage>> =>
     display: (input) => input.title,
 
     watcher: (editor, value, callback) =>
-      editor.formatter.formatChanged('lang', callback, false, { value: value.code, customValue: value.customCode }).unbind,
+      editor.formatter.formatChanged('lang', callback, false, { value: value.code, customValue: value.customCode ?? null }).unbind,
     getCurrent: (editor) => {
       const node = SugarElement.fromDom(editor.selection.getNode());
       return TransformFind.closest(node, (n) =>
@@ -130,7 +123,7 @@ const languageSpec = (editor: Editor): Optional<ControlSpec<ContentLanguage>> =>
   }));
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
   registerController(editor, lineHeightSpec);
   languageSpec(editor).each((spec) => registerController(editor, spec));
 };

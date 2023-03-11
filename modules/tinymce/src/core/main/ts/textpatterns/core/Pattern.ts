@@ -1,26 +1,12 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Arr, Result, Results, Type } from '@ephox/katamari';
 
-import { Arr, Result, Type } from '@ephox/katamari';
-
-import { BlockPattern, InlineCmdPattern, InlinePattern, Pattern, PatternError, PatternSet, RawPattern } from './PatternTypes';
+import { BlockPattern, DynamicPatternContext, DynamicPatternsLookup, InlineCmdPattern, InlinePattern, Pattern, PatternError, PatternSet, RawDynamicPatternsLookup, RawPattern } from './PatternTypes';
 
 const isInlinePattern = (pattern: Pattern): pattern is InlinePattern =>
   pattern.type === 'inline-command' || pattern.type === 'inline-format';
 
 const isBlockPattern = (pattern: Pattern): pattern is BlockPattern =>
   pattern.type === 'block-command' || pattern.type === 'block-format';
-
-const sortPatterns = <T extends Pattern>(patterns: T[]): T[] => Arr.sort(patterns, (a, b) => {
-  if (a.start.length === b.start.length) {
-    return 0;
-  }
-  return a.start.length > b.start.length ? -1 : 1;
-});
 
 const normalizePattern = (pattern: RawPattern): Result<Pattern, PatternError> => {
   const err = (message: string) => Result.error({ message, pattern });
@@ -104,48 +90,37 @@ const normalizePattern = (pattern: RawPattern): Result<Pattern, PatternError> =>
   }
 };
 
-const denormalizePattern = (pattern: Pattern): RawPattern => {
-  if (pattern.type === 'block-command') {
-    return {
-      start: pattern.start,
-      cmd: pattern.cmd,
-      value: pattern.value
-    };
-  } else if (pattern.type === 'block-format') {
-    return {
-      start: pattern.start,
-      format: pattern.format
-    };
-  } else if (pattern.type === 'inline-command') {
-    if (pattern.cmd === 'mceInsertContent' && pattern.start === '') {
-      return {
-        start: pattern.end,
-        replacement: pattern.value
-      };
-    } else {
-      return {
-        start: pattern.start,
-        end: pattern.end,
-        cmd: pattern.cmd,
-        value: pattern.value
-      };
-    }
-  } else if (pattern.type === 'inline-format') {
-    return {
-      start: pattern.start,
-      end: pattern.end,
-      format: pattern.format.length === 1 ? pattern.format[0] : pattern.format
-    };
-  }
+const getBlockPatterns = (patterns: Pattern[]): BlockPattern[] =>
+  Arr.filter(patterns, isBlockPattern);
+
+const getInlinePatterns = (patterns: Pattern[]): InlinePattern[] =>
+  Arr.filter(patterns, isInlinePattern);
+
+const createPatternSet = (patterns: Pattern[], dynamicPatternsLookup: DynamicPatternsLookup): PatternSet => ({
+  inlinePatterns: getInlinePatterns(patterns),
+  blockPatterns: getBlockPatterns(patterns),
+  dynamicPatternsLookup
+});
+
+const fromRawPatterns = (patterns: RawPattern[]): Pattern[] => {
+  const normalized = Results.partition(Arr.map(patterns, normalizePattern));
+  // eslint-disable-next-line no-console
+  Arr.each(normalized.errors, (err) => console.error(err.message, err.pattern));
+  return normalized.values;
 };
 
-const createPatternSet = (patterns: Pattern[]): PatternSet => ({
-  inlinePatterns: Arr.filter(patterns, isInlinePattern),
-  blockPatterns: sortPatterns(Arr.filter(patterns, isBlockPattern))
-});
+const fromRawPatternsLookup = (lookupFn: RawDynamicPatternsLookup): DynamicPatternsLookup => {
+  return (ctx: DynamicPatternContext) => {
+    const rawPatterns = lookupFn(ctx);
+    return fromRawPatterns(rawPatterns);
+  };
+};
 
 export {
   normalizePattern,
-  denormalizePattern,
-  createPatternSet
+  createPatternSet,
+  getBlockPatterns,
+  getInlinePatterns,
+  fromRawPatterns,
+  fromRawPatternsLookup
 };

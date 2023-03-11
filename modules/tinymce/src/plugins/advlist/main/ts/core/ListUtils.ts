@@ -1,25 +1,24 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Optional } from '@ephox/katamari';
+import { Arr, Optional, Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
+
+const isCustomList = (list: HTMLElement): boolean =>
+  /\btox\-/.test(list.className);
 
 const isChildOfBody = (editor: Editor, elm: Node): boolean => {
   return editor.dom.isChildOf(elm, editor.getBody());
 };
 
-const isTableCellNode = (node: Node | null): boolean => {
-  return node && /^(TH|TD)$/.test(node.nodeName);
-};
+const matchNodeNames = <T extends Node = Node>(regex: RegExp) =>
+  (node: Node | null): node is T => Type.isNonNullable(node) && regex.test(node.nodeName);
 
-const isListNode = (editor: Editor) => (node: Node | null): boolean => {
-  return node && (/^(OL|UL|DL)$/).test(node.nodeName) && isChildOfBody(editor, node);
-};
+const isListNode = matchNodeNames<HTMLOListElement | HTMLUListElement | HTMLDListElement>(/^(OL|UL|DL)$/);
+
+const isTableCellNode = matchNodeNames<HTMLTableHeaderCellElement | HTMLTableCellElement>(/^(TH|TD)$/);
+
+const inList = (editor: Editor, parents: Node[], nodeName: string): boolean =>
+  Arr.findUntil(parents, (parent) => isListNode(parent) && !isCustomList(parent), isTableCellNode)
+    .exists((list) => list.nodeName === nodeName && isChildOfBody(editor, list));
 
 const getSelectedStyleType = (editor: Editor): Optional<string> => {
   const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
@@ -27,8 +26,19 @@ const getSelectedStyleType = (editor: Editor): Optional<string> => {
   return Optional.from(style);
 };
 
+// Lists/core/Util.ts - Duplicated in Lists plugin
+const isWithinNonEditable = (editor: Editor, element: Element | null): boolean =>
+  element !== null && !editor.dom.isEditable(element);
+
+const isWithinNonEditableList = (editor: Editor, element: Element | null): boolean => {
+  const parentList = editor.dom.getParent(element, 'ol,ul,dl');
+  return isWithinNonEditable(editor, parentList);
+};
+
 export {
-  isTableCellNode,
-  isListNode,
-  getSelectedStyleType
+  isTableCellNode, // Exported for testing
+  isListNode, // Exported for testing
+  inList,
+  getSelectedStyleType,
+  isWithinNonEditableList
 };

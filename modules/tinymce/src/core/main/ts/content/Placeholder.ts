@@ -1,11 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr } from '@ephox/katamari';
+import { Arr, Strings } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
 import DOMUtils from '../api/dom/DOMUtils';
@@ -64,7 +57,6 @@ const isTypingKeyboardEvent = (e: EditorEvent<unknown>) =>
 const isVisuallyEmpty = (dom: DOMUtils, rootElm: Element, forcedRootBlock: string): boolean => {
   // Note: Don't use DOMUtils.isEmpty() here as it treats empty format caret nodes as non empty nodes
   if (Empty.isEmpty(SugarElement.fromDom(rootElm), false)) {
-    const isForcedRootBlockFalse = forcedRootBlock === '';
     // Ensure the node matches the forced_root_block setting, as the content could be an empty list, etc...
     // and also check that the content isn't indented
     const firstElement = rootElm.firstElementChild;
@@ -73,7 +65,7 @@ const isVisuallyEmpty = (dom: DOMUtils, rootElm: Element, forcedRootBlock: strin
     } else if (dom.getStyle(rootElm.firstElementChild, 'padding-left') || dom.getStyle(rootElm.firstElementChild, 'padding-right')) {
       return false;
     } else {
-      return isForcedRootBlockFalse ? !dom.isBlock(firstElement) : forcedRootBlock === firstElement.nodeName.toLowerCase();
+      return forcedRootBlock === firstElement.nodeName.toLowerCase();
     }
   } else {
     return false;
@@ -83,7 +75,7 @@ const isVisuallyEmpty = (dom: DOMUtils, rootElm: Element, forcedRootBlock: strin
 const setup = (editor: Editor): void => {
   const dom = editor.dom;
   const rootBlock = Options.getForcedRootBlock(editor);
-  const placeholder = Options.getPlaceholder(editor);
+  const placeholder = Options.getPlaceholder(editor) ?? '';
 
   const updatePlaceholder = (e: EditorEvent<unknown>, initial?: boolean) => {
     if (isNonTypingKeyboardEvent(e)) {
@@ -110,7 +102,7 @@ const setup = (editor: Editor): void => {
     }
   };
 
-  if (placeholder) {
+  if (Strings.isNotEmpty(placeholder)) {
     editor.on('init', (e) => {
       // Setup the initial state
       updatePlaceholder(e, true);

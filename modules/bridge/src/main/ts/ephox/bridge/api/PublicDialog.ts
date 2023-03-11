@@ -3,7 +3,7 @@ import { BarSpec } from '../components/dialog/Bar';
 import { BodyComponentSpec } from '../components/dialog/BodyComponent';
 import { ButtonSpec } from '../components/dialog/Button';
 import { CheckboxSpec } from '../components/dialog/Checkbox';
-import { CollectionSpec } from '../components/dialog/Collection';
+import { CollectionItem, CollectionSpec } from '../components/dialog/Collection';
 import { ColorInputSpec } from '../components/dialog/ColorInput';
 import { ColorPickerSpec } from '../components/dialog/ColorPicker';
 import { CustomEditorInit, CustomEditorInitFn, CustomEditorSpec } from '../components/dialog/CustomEditor';
@@ -15,7 +15,7 @@ import { DropZoneSpec } from '../components/dialog/Dropzone';
 import { GridSpec } from '../components/dialog/Grid';
 import { HtmlPanelSpec } from '../components/dialog/HtmlPanel';
 import { IframeSpec } from '../components/dialog/Iframe';
-import { ImageToolsSpec } from '../components/dialog/ImageTools';
+import { ImagePreviewSpec } from '../components/dialog/ImagePreview';
 import { InputSpec } from '../components/dialog/Input';
 import { LabelSpec } from '../components/dialog/Label';
 import { ListBoxItemSpec, ListBoxSpec, ListBoxSingleItemSpec, ListBoxNestedItemSpec } from '../components/dialog/ListBox';
@@ -26,10 +26,11 @@ import { SliderSpec } from '../components/dialog/Slider';
 import { TableSpec } from '../components/dialog/Table';
 import { TabPanelSpec, TabSpec } from '../components/dialog/TabPanel';
 import { TextAreaSpec } from '../components/dialog/Textarea';
+import { TreeSpec, TreeItemSpec, DirectorySpec as TreeDirectorySpec, LeafSpec as TreeLeafSpec } from '../components/dialog/Tree';
 import {
   UrlDialogActionDetails, UrlDialogFooterButtonSpec, UrlDialogInstanceApi, UrlDialogMessage, UrlDialogSpec
 } from '../components/dialog/UrlDialog';
-import { UrlInputSpec } from '../components/dialog/UrlInput';
+import { UrlInputData, UrlInputSpec } from '../components/dialog/UrlInput';
 
 // These are the types that are exposed though a public end user api
 
@@ -44,6 +45,7 @@ export {
 
   CheckboxSpec,
 
+  CollectionItem,
   CollectionSpec,
 
   ColorInputSpec,
@@ -71,7 +73,7 @@ export {
 
   IframeSpec,
 
-  ImageToolsSpec,
+  ImagePreviewSpec,
 
   InputSpec,
 
@@ -98,6 +100,12 @@ export {
 
   TextAreaSpec,
 
+  TreeSpec,
+  TreeItemSpec,
+  TreeDirectorySpec,
+  TreeLeafSpec,
+
+  UrlInputData,
   UrlInputSpec,
 
   UrlDialogSpec,

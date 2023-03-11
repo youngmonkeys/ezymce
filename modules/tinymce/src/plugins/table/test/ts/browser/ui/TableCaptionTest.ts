@@ -3,11 +3,12 @@ import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { TableModifiedEvent } from 'tinymce/core/api/EventTypes';
 import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
-import { TableModifiedEvent } from 'tinymce/plugins/table/api/Events';
 import Plugin from 'tinymce/plugins/table/Plugin';
 
 import { assertStructureIsRestoredToDefault, clickOnButton, pClickOnMenuItem, setEditorContentTableAndSelection } from '../../module/test/TableModifiersTestUtils';
+import * as TableTestUtils from '../../module/test/TableTestUtils';
 
 describe('browser.tinymce.plugins.table.ui.TableCaptionTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -16,7 +17,7 @@ describe('browser.tinymce.plugins.table.ui.TableCaptionTest', () => {
     toolbar: 'tablecaption',
     base_url: '/project/tinymce/js/tinymce',
     setup: (editor: Editor) => {
-      editor.on('tablemodified', logEvent);
+      editor.on('TableModified', logEvent);
     },
     menu: {
       table: { title: 'Table', items: 'tablecaption' },
@@ -173,6 +174,29 @@ describe('browser.tinymce.plugins.table.ui.TableCaptionTest', () => {
 
       toggleCaption(editor);
       assertTableStructureIsCorrect(editor, nestedTableCaptionStructure);
+    });
+  });
+
+  context('noneditable', () => {
+    it('TINY-9459: Should not apply mceToggleCaption command on table inside a noneditable div', () => {
+      const editor = hook.editor();
+      const initalContent = '<div contenteditable="false"><table><tbody><tr><td>cell</td></tr></tbody></table></div>';
+      editor.setContent(initalContent);
+      TinySelections.setCursor(editor, [ 1, 0, 0, 0, 0, 0 ], 0); // Index off by one due to cef fake caret
+      editor.execCommand('mceTableToggleCaption');
+      TinyAssertions.assertContent(editor, initalContent);
+    });
+
+    it('TINY-9459: Should not apply mceToggleCaption command on table inside a noneditable root', () => {
+      TableTestUtils.withNoneditableRootEditor(hook.editor(), (editor) => {
+        const initalContent = '<table><tbody><tr><td>cell</td></tr></tbody></table>';
+        editor.getBody().contentEditable = 'false';
+        editor.setContent(initalContent);
+        TinySelections.setCursor(editor, [ 0, 0, 0, 0, 0 ], 0);
+        editor.execCommand('mceTableToggleCaption');
+        TinyAssertions.assertContent(editor, initalContent);
+        editor.getBody().contentEditable = 'true';
+      });
     });
   });
 });

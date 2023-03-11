@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 import EditorManager from 'tinymce/core/api/EditorManager';
 import Tools from 'tinymce/core/api/util/Tools';
@@ -13,7 +6,7 @@ import * as Options from '../api/Options';
 
 const setup = (editor: Editor): void => {
   editor.editorManager.on('BeforeUnload', (e) => {
-    let msg: string;
+    let msg: string | undefined;
 
     Tools.each(EditorManager.get(), (editor) => {
       // Store a draft for each editor instance

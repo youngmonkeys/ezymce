@@ -1,8 +1,8 @@
 import { UiFinder, UiControls } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
 import { Dialog } from '@ephox/bridge';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Tools from 'tinymce/core/api/util/Tools';
@@ -22,20 +22,17 @@ describe('browser.tinymce.plugins.link.LinkDialogOverrideTest', () => {
             if (spec.title === 'Insert/Edit Link') {
               const newSpec = Tools.extend({}, spec, {
                 onChange: (api: Dialog.DialogInstanceApi<LinkDialogData>, details: Dialog.DialogChangeDetails<LinkDialogData>) => {
-                  spec.onChange(api, details);
+                  spec.onChange?.(api, details);
                   if (details.name === 'url' || details.name === 'link' || details.name === 'anchor') {
                     const data = api.getData();
-                    if (data.url.value.length === 0) {
-                      api.disable('save');
-                    } else {
-                      api.enable('save');
-                    }
+                    api.setEnabled('save', data.url.value.length > 0);
                   }
                 }
               });
               const api = originalWindowManager.open(newSpec);
-              if (spec.initialData.url.value.length === 0) {
-                api.disable('save');
+              const urlValue = spec.initialData?.url?.value ?? '';
+              if (urlValue.length === 0) {
+                api.setEnabled('save', false);
               }
 
               return api;

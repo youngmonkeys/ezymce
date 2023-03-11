@@ -1,11 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Fun, Optional } from '@ephox/katamari';
+import { Fun, Optional, Optionals } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { InlineContent } from 'tinymce/core/api/ui/Ui';
@@ -64,7 +57,14 @@ const setupContextMenu = (editor: Editor): void => {
   const inLink = 'link unlink openlink';
   const noLink = 'link';
   editor.ui.registry.addContextMenu('link', {
-    update: (element) => Utils.hasLinks(editor.dom.getParents(element, 'a') as HTMLAnchorElement[]) ? inLink : noLink
+    update: (element) => {
+      const isEditable = editor.dom.isEditable(element);
+      if (!isEditable) {
+        return '';
+      }
+
+      return Utils.hasLinks(editor.dom.getParents(element, 'a') as HTMLAnchorElement[]) ? inLink : noLink;
+    }
   });
 };
 
@@ -75,20 +75,22 @@ const setupContextToolbars = (editor: Editor): void => {
 
   const onSetupLink = (buttonApi: InlineContent.ContextFormButtonInstanceApi) => {
     const node = editor.selection.getNode();
-    buttonApi.setDisabled(!Utils.getAnchorElement(editor, node));
+    buttonApi.setEnabled(Utils.isInAnchor(editor, node));
     return Fun.noop;
   };
 
-  /*
+  /**
    * if we're editing a link, don't change the text.
    * if anything other than text is selected, don't change the text.
+   * TINY-9593: If there is a text selection return `Optional.none`
+   * because `mceInsertLink` command will handle the selection.
    */
   const getLinkText = (value: string) => {
     const anchor = Utils.getAnchorElement(editor);
     const onlyText = Utils.isOnlyTextSelected(editor);
-    if (!anchor && onlyText) {
+    if (anchor.isNone() && onlyText) {
       const text = Utils.getAnchorText(editor.selection, anchor);
-      return Optional.some(text.length > 0 ? text : value);
+      return Optionals.someIf(text.length === 0, value);
     } else {
       return Optional.none();
     }
@@ -102,10 +104,10 @@ const setupContextToolbars = (editor: Editor): void => {
       onSetup: Actions.toggleActiveState(editor)
     },
     label: 'Link',
-    predicate: (node) => !!Utils.getAnchorElement(editor, node) && Options.hasContextToolbar(editor),
+    predicate: (node) => Options.hasContextToolbar(editor) && Utils.isInAnchor(editor, node),
     initValue: () => {
       const elm = Utils.getAnchorElement(editor);
-      return !!elm ? Utils.getHref(elm) : '';
+      return elm.fold(Fun.constant(''), Utils.getHref);
     },
     commands: [
       {
@@ -116,7 +118,7 @@ const setupContextToolbars = (editor: Editor): void => {
         onSetup: (buttonApi) => {
           const node = editor.selection.getNode();
           // TODO: Make a test for this later.
-          buttonApi.setActive(!!Utils.getAnchorElement(editor, node));
+          buttonApi.setActive(Utils.isInAnchor(editor, node));
           return Actions.toggleActiveState(editor)(buttonApi);
         },
         onAction: (formApi) => {

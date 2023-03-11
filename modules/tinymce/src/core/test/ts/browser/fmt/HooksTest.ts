@@ -1,6 +1,5 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyHooks } from '@ephox/wrap-mcagar';
-import { assert } from 'chai';
+import { LegacyUnit, TinyAssertions, TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import * as Hooks from 'tinymce/core/fmt/Hooks';
@@ -20,13 +19,13 @@ describe('browser.tinymce.core.fmt.HooksTest', () => {
       editor.getBody().innerHTML = setupHtml;
       LegacyUnit.setSelection(editor, ...setupSelection);
       Hooks.postProcess('pre', editor);
-      assert.equal(editor.getContent(), expected);
+      TinyAssertions.assertContent(editor, expected);
     };
 
     assertPreHook(
       '<pre>a</pre><pre>b</pre>',
       [ 'pre:nth-child(1)', 0, 'pre:nth-child(2)', 1 ],
-      '<pre>a<br /><br />b</pre>'
+      '<pre>a<br><br>b</pre>'
     );
 
     assertPreHook(
@@ -44,7 +43,7 @@ describe('browser.tinymce.core.fmt.HooksTest', () => {
     assertPreHook(
       '<pre>a</pre><pre>b</pre><pre>c</pre>',
       [ 'pre:nth-child(1)', 0, 'pre:nth-child(3)', 1 ],
-      '<pre>a<br /><br />b<br /><br />c</pre>'
+      '<pre>a<br><br>b<br><br>c</pre>'
     );
 
     assertPreHook(
@@ -62,7 +61,7 @@ describe('browser.tinymce.core.fmt.HooksTest', () => {
     assertPreHook(
       '<pre>a</pre><pre>b</pre><p>c</p><pre>d</pre><pre>e</pre>',
       [ 'pre:nth-child(1)', 0, 'pre:nth-child(5)', 1 ],
-      '<pre>a<br /><br />b</pre><p>c</p><pre>d<br /><br />e</pre>'
+      '<pre>a<br><br>b</pre><p>c</p><pre>d<br><br>e</pre>'
     );
   });
 });

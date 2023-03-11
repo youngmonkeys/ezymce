@@ -1,5 +1,5 @@
-import { describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyAssertions, TinyHooks } from '@ephox/wrap-mcagar';
+import { context, describe, it } from '@ephox/bedrock-client';
+import { LegacyUnit, TinyAssertions, TinySelections, TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -12,7 +12,7 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
     disable_nodechange: true,
     indent: false,
     entities: 'raw',
-    valid_elements:
+    extended_valid_elements:
       'li[style|class|data-custom|data-custom1|data-custom2],ol[style|class|data-custom|data-custom1|data-custom2],' +
       'ul[style|class|data-custom|data-custom1|data-custom2],dl,dt,dd,em,strong,span,#p,div,br',
     valid_styles: {
@@ -328,7 +328,7 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
     );
 
     LegacyUnit.setSelection(editor, 'ul li', 1);
-    editor.execCommand('InsertOrderedList', null, { 'list-style-type': 'lower-alpha' });
+    editor.execCommand('InsertOrderedList', false, { 'list-style-type': 'lower-alpha' });
 
     TinyAssertions.assertContent(
       editor,
@@ -356,7 +356,7 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
     );
 
     LegacyUnit.setSelection(editor, 'p', 1);
-    editor.execCommand('InsertOrderedList', null, { 'list-style-type': 'lower-alpha' });
+    editor.execCommand('InsertOrderedList', false, { 'list-style-type': 'lower-alpha' });
 
     TinyAssertions.assertContent(
       editor,
@@ -507,193 +507,6 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
       '</ol>'
     );
     assert.equal(editor.selection.getStart().nodeName, 'LI');
-  });
-
-  it('TBA: Apply UL list to single text line', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-    editor.setContent('a');
-
-    LegacyUnit.setSelection(editor, 'body', 0);
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(editor, '<ul><li>a</li></ul>');
-    assert.equal(editor.selection.getNode().nodeName, 'LI');
-
-    editor.options.unset('forced_root_block');
-  });
-
-  it('TBA: Apply UL list to single text line with BR', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-    editor.setContent('a<br>');
-
-    LegacyUnit.setSelection(editor, 'body', 0);
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(editor, '<ul><li>a</li></ul>');
-    assert.equal(editor.selection.getNode().nodeName, 'LI');
-
-    editor.options.unset('forced_root_block');
-  });
-
-  it('TBA: Apply UL list to multiple lines separated by BR', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      'a<br>' +
-      'b<br>' +
-      'c',
-      { format: 'raw' }
-    );
-
-    editor.execCommand('SelectAll');
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li>a</li>' +
-      '<li>b</li>' +
-      '<li>c</li>' +
-      '</ul>'
-    );
-    assert.equal(editor.selection.getStart().nodeName, 'LI');
-
-    editor.options.unset('forced_root_block');
-  });
-
-  it('Apply UL list to multiple lines separated by BR and with trailing BR', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      'a<br>' +
-      'b<br>' +
-      'c<br>',
-      { format: 'raw' }
-    );
-
-    editor.execCommand('SelectAll');
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li>a</li>' +
-      '<li>b</li>' +
-      '<li>c</li>' +
-      '</ul>'
-    );
-    assert.equal(editor.selection.getStart().nodeName, 'LI');
-  });
-
-  it('TBA: Apply UL list to multiple formatted lines separated by BR', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      '<strong>a</strong><br>' +
-      '<span>b</span><br>' +
-      '<em>c</em>',
-      { format: 'raw' }
-    );
-
-    LegacyUnit.setSelection(editor, 'strong', 0, 'em', 0);
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li><strong>a</strong></li>' +
-      '<li><span>b</span></li>' +
-      '<li><em>c</em></li>' +
-      '</ul>'
-    );
-
-    assert.equal(editor.selection.getStart().nodeName, 'STRONG');
-    assert.equal(editor.selection.getEnd().nodeName, 'EM');
-  });
-
-  it('TBA: Apply UL list to br line and text block line', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      'a' +
-      '<p>b</p>'
-    );
-
-    const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 0);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 1);
-    editor.selection.setRng(rng);
-
-    editor.execCommand('InsertUnorderedList');
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li>a</li>' +
-      '<li>b</li>' +
-      '</ul>'
-    );
-
-    assert.equal(editor.selection.getStart().nodeName, 'LI');
-    assert.equal(editor.selection.getEnd().nodeName, 'LI');
-  });
-
-  it('TBA: Apply UL list to text block line and br line', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      '<p>a</p>' +
-      'b'
-    );
-
-    const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 0);
-    rng.setEnd(editor.getBody().lastChild, 1);
-    editor.selection.setRng(rng);
-
-    editor.execCommand('InsertUnorderedList');
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li>a</li>' +
-      '<li>b</li>' +
-      '</ul>'
-    );
-
-    assert.equal(editor.selection.getStart().nodeName, 'LI');
-    assert.equal(editor.selection.getEnd().nodeName, 'LI');
-  });
-
-  it('TBA: Apply UL list to all BR lines (SelectAll)', () => {
-    const editor = hook.editor();
-    editor.options.set('forced_root_block', false);
-
-    editor.setContent(
-      'a<br>' +
-      'b<br>' +
-      'c<br>',
-      { format: 'raw' }
-    );
-
-    editor.execCommand('SelectAll');
-    editor.execCommand('InsertUnorderedList');
-
-    TinyAssertions.assertContent(
-      editor,
-      '<ul>' +
-      '<li>a</li>' +
-      '<li>b</li>' +
-      '<li>c</li>' +
-      '</ul>'
-    );
-
-    editor.options.unset('forced_root_block');
   });
 
   it('TBA: Apply UL list to all P lines (SelectAll)', () => {
@@ -949,8 +762,8 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
     );
 
     const rng = editor.dom.createRng();
-    rng.setStart(editor.dom.select('td')[0].firstChild, 0);
-    rng.setEnd(editor.dom.select('td')[0].firstChild, 0);
+    rng.setStart(editor.dom.select('td')[0].firstChild as Text, 0);
+    rng.setEnd(editor.dom.select('td')[0].firstChild as Text, 0);
     editor.selection.setRng(rng);
 
     editor.execCommand('InsertUnorderedList');
@@ -1085,5 +898,41 @@ describe('browser.tinymce.plugins.lists.ApplyTest', () => {
       '</ul>'
     );
     TinyAssertions.assertRawContent(editor, expected);
+  });
+
+  context('Parent context', () => {
+    const testApplyOLAtTextPath = (inputHtml: string, path: number[], expectedHtml: string) => () => {
+      const editor = hook.editor();
+      editor.setContent(inputHtml);
+
+      TinySelections.setCursor(editor, path, 0);
+      editor.execCommand('InsertOrderedList');
+
+      TinyAssertions.assertContent(editor, expectedHtml);
+    };
+
+    it('TINY-8068: apply OL to UL inside DIV should not alter the DIV', testApplyOLAtTextPath(
+      '<div><ul><li>a</li></ul></div>',
+      [ 0, 0, 0, 0 ],
+      '<div><ol><li>a</li></ol></div>'
+    ));
+
+    it('TINY-8068: apply OL to UL on LI with a paragraph should not alter the paragraph', testApplyOLAtTextPath(
+      '<ul><li><p>a</p></li></ul>',
+      [ 0, 0, 0, 0 ],
+      '<ol><li><p>a</p></li></ol>'
+    ));
+
+    it('TINY-8068: apply OL in a table should not alter elements outside the table', testApplyOLAtTextPath(
+      '<div><table><tbody><tr><td>a</td></tr></tbody></table></div>',
+      [ 0, 0, 0, 0, 0, 0 ],
+      '<div><table><tbody><tr><td><ol><li>a</li></ol></td></tr></tbody></table></div>'
+    ));
+
+    it('TINY-8068: apply OL to UL in table should not alter elements outside the table', testApplyOLAtTextPath(
+      '<div><table><tbody><tr><td><ul><li>a</li></ul></td></tr></tbody></table></div>',
+      [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+      '<div><table><tbody><tr><td><ol><li>a</li></ol></td></tr></tbody></table></div>'
+    ));
   });
 });

@@ -6,8 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Fixed
+- Table cells that are in a noneditable context was incorrectly selectable with keyboard and mouse.
+
+## 8.0.0 - 2022-03-03
+
 ### Changed
 - Upgraded to Katamari 9.0, which includes breaking changes to the `Optional` API used in this module.
+- Changed the `CellOpSelection` module to take selected cells directly instead of a `Selections` instance.
+- Changed the `SelectionTypes` ADT to its TypeScript equivalent and renamed the `cata` API to `fold`.
 
 ### Removed
 - Removed support for Microsoft Internet Explorer and legacy Microsoft Edge.

@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Regexes } from '@ephox/polaris';
 
 import Editor from 'tinymce/core/api/Editor';
 import { EditorOptions } from 'tinymce/core/api/OptionTypes';
 
 const option: {
-  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K] | undefined;
-  <T>(name: string): (editor: Editor) => T | undefined;
+  <K extends keyof EditorOptions>(name: K): (editor: Editor) => EditorOptions[K];
+  <T>(name: string): (editor: Editor) => T;
 } = (name: string) => (editor: Editor) =>
   editor.options.get(name);
 
@@ -36,11 +29,13 @@ const register = (editor: Editor): void => {
 };
 
 const getAutoLinkPattern = option<RegExp>('autolink_pattern');
-const getDefaultLinkTarget = option<string>('link_default_target');
+const getDefaultLinkTarget = option<string | undefined>('link_default_target');
 const getDefaultLinkProtocol = option<string>('link_default_protocol');
+const allowUnsafeLinkTarget = option('allow_unsafe_link_target');
 
 export {
   register,
+  allowUnsafeLinkTarget,
   getAutoLinkPattern,
   getDefaultLinkTarget,
   getDefaultLinkProtocol

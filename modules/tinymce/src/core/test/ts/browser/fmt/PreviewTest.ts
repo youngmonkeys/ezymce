@@ -1,12 +1,12 @@
 import { Waiter } from '@ephox/agar';
 import { context, describe, it } from '@ephox/bedrock-client';
+import { Fun } from '@ephox/katamari';
 import { TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { ApplyFormat } from 'tinymce/core/fmt/FormatTypes';
 import * as Preview from 'tinymce/core/fmt/Preview';
-
-import * as HtmlUtils from '../../module/test/HtmlUtils';
 
 describe('browser.tinymce.core.fmt.PreviewTest', () => {
   it('Preview.parseSelector', () => {
@@ -114,7 +114,7 @@ describe('browser.tinymce.core.fmt.PreviewTest', () => {
   it('Preview.selectorToHtml', () => {
     const trimSpaces = (str: string) => str.replace(/>\s+</g, '><').replace(/^\s*|\s*$/g, '');
 
-    const selectorToHtml = (selector: string) => HtmlUtils.normalizeHtml(Preview.selectorToHtml(selector).outerHTML);
+    const selectorToHtml = (selector: string) => Preview.selectorToHtml(selector).outerHTML;
 
     assert.equal(selectorToHtml('ul > li.class1'), trimSpaces([
       '<div>',
@@ -152,7 +152,7 @@ describe('browser.tinymce.core.fmt.PreviewTest', () => {
       '<div>',
       '<p>',
       '<ul>',
-      '<li alt="Some Alt" title="Some Title"></li>',
+      '<li title="Some Title" alt="Some Alt"></li>',
       '</ul>',
       '</p>',
       '</div>'
@@ -196,7 +196,7 @@ describe('browser.tinymce.core.fmt.PreviewTest', () => {
 
     it('Get preview css text for formats', () => {
       const editor = hook.editor();
-      const getCssText = (format) => {
+      const getCssText = (format: string | ApplyFormat) => {
         return Preview.getCssText(editor, format);
       };
 
@@ -241,6 +241,15 @@ describe('browser.tinymce.core.fmt.PreviewTest', () => {
 
       assert.isTrue(/color:rgb\(0, 0, 255\)/.test(getCssText({ selector: 'ul li ol li', classes: [ 'preview' ] })),
         'ul li ol li previewed properly.');
+
+      assert.isTrue(/color:rgb\(0, 255, 0\)/.test(getCssText({
+        inline: 'span',
+        styles: { color: '#00ff00' },
+        attributes: {
+          'lang': '%value',
+          'data-mce-lang': Fun.constant(null)
+        }
+      })), 'Format with variable attribute values');
     });
   });
 });

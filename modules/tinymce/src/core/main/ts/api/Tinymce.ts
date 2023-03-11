@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { RangeLikeObject } from '../selection/RangeTypes';
 import { UndoManager as UndoManagerType } from '../undo/UndoManagerTypes';
 import AddOnManager from './AddOnManager';
@@ -25,18 +18,19 @@ import EditorCommands, { EditorCommandsConstructor } from './EditorCommands';
 import EditorManager from './EditorManager';
 import EditorObservable from './EditorObservable';
 import Env from './Env';
+import FakeClipboard from './FakeClipboard';
 import FocusManager from './FocusManager';
 import Formatter from './Formatter';
 import Rect from './geom/Rect';
 import DomParser, { DomParserSettings } from './html/DomParser';
 import Entities from './html/Entities';
 import AstNode, { AstNodeConstructor } from './html/Node';
-import SaxParser, { SaxParserSettings } from './html/SaxParser';
 import Schema, { SchemaSettings } from './html/Schema';
 import HtmlSerializer, { HtmlSerializerSettings } from './html/Serializer';
 import Styles, { StylesSettings } from './html/Styles';
 import Writer, { WriterSettings } from './html/Writer';
 import IconManager from './IconManager';
+import ModelManager from './ModelManager';
 import NotificationManager from './NotificationManager';
 import PluginManager from './PluginManager';
 import Resource from './Resource';
@@ -52,7 +46,6 @@ import Observable from './util/Observable';
 import Tools from './util/Tools';
 import URI, { URIConstructor } from './util/URI';
 import VK from './util/VK';
-import XHR from './util/XHR';
 import WindowManager from './WindowManager';
 
 interface DOMUtilsNamespace {
@@ -79,18 +72,13 @@ interface AddOnManagerNamespace {
   baseURL: string;
   PluginManager: PluginManager;
   ThemeManager: ThemeManager;
+  ModelManager: ModelManager;
 }
 
 interface BookmarkManagerNamespace {
   (selection: EditorSelection): BookmarkManager;
 
   isBookmarkNode: (node: Node) => boolean;
-}
-
-interface SaxParserNamespace {
-  (settings?: SaxParserSettings, schema?: Schema): SaxParser;
-
-  findEndTag: (schema: Schema, html: string, startIndex: number) => number;
 }
 
 interface TinyMCE extends EditorManager {
@@ -107,7 +95,6 @@ interface TinyMCE extends EditorManager {
     EventDispatcher: EventDispatcherConstructor<any>;
     Observable: Observable<any>;
     I18n: I18n;
-    XHR: XHR;
     LocalStorage: Storage;
     ImageUploader: ImageUploader;
   };
@@ -132,7 +119,6 @@ interface TinyMCE extends EditorManager {
     Entities: Entities;
     Node: AstNodeConstructor;
     Schema: (settings?: SchemaSettings) => Schema;
-    SaxParser: SaxParserNamespace;
     DomParser: (settings?: DomParserSettings, schema?: Schema) => DomParser;
     Writer: (settings?: WriterSettings) => Writer;
     Serializer: (settings?: HtmlSerializerSettings, schema?: Schema) => HtmlSerializer;
@@ -157,8 +143,10 @@ interface TinyMCE extends EditorManager {
   ScriptLoader: ScriptLoader;
   PluginManager: PluginManager;
   ThemeManager: ThemeManager;
+  ModelManager: ModelManager;
   IconManager: IconManager;
   Resource: Resource;
+  FakeClipboard: FakeClipboard;
 
   // Global utility functions
   trim: Tools['trim'];
@@ -202,7 +190,6 @@ const publicApi = {
     EventDispatcher,
     Observable,
     I18n,
-    XHR,
     LocalStorage,
     ImageUploader
   },
@@ -227,7 +214,6 @@ const publicApi = {
     Entities,
     Node: AstNode,
     Schema,
-    SaxParser,
     DomParser,
     Writer,
     Serializer: HtmlSerializer
@@ -252,8 +238,10 @@ const publicApi = {
   ScriptLoader: ScriptLoader.ScriptLoader,
   PluginManager,
   ThemeManager,
+  ModelManager,
   IconManager,
   Resource,
+  FakeClipboard,
 
   // Global utility functions
   trim: Tools.trim,

@@ -21,7 +21,8 @@ const schema = [
   FieldSchema.defaulted('execute', KeyingTypes.defaultExecute),
   Fields.onKeyboardHandler('onEscape'),
   FieldSchema.defaulted('executeOnMove', false),
-  FieldSchema.defaulted('allowVertical', true)
+  FieldSchema.defaulted('allowVertical', true),
+  FieldSchema.defaulted('cycles', true)
 ];
 
 // TODO: Remove dupe.
@@ -41,10 +42,10 @@ const focusIn = (component: AlloyComponent, flowConfig: FlowConfig, _state: Stat
 };
 
 const moveLeft = (element: SugarElement<HTMLElement>, focused: SugarElement<HTMLElement>, info: FlowConfig): Optional<SugarElement<HTMLElement>> =>
-  DomNavigation.horizontal(element, info.selector, focused, -1);
+  (info.cycles ? DomNavigation.horizontal : DomNavigation.horizontalWithoutCycles)(element, info.selector, focused, -1);
 
 const moveRight = (element: SugarElement<HTMLElement>, focused: SugarElement<HTMLElement>, info: FlowConfig): Optional<SugarElement<HTMLElement>> =>
-  DomNavigation.horizontal(element, info.selector, focused, +1);
+  (info.cycles ? DomNavigation.horizontal : DomNavigation.horizontalWithoutCycles)(element, info.selector, focused, +1);
 
 const doMove = (movement: KeyRuleHandler<FlowConfig, Stateless>): KeyRuleHandler<FlowConfig, Stateless> =>
   (component, simulatedEvent, flowConfig, flowState) =>
@@ -70,13 +71,13 @@ const getKeydownRules = (
     KeyRules.rule(KeyMatch.inSet(westMovers), doMove(DomMovement.west(moveLeft, moveRight))),
     KeyRules.rule(KeyMatch.inSet(eastMovers), doMove(DomMovement.east(moveLeft, moveRight))),
     KeyRules.rule(KeyMatch.inSet(Keys.ENTER), execute),
-    KeyRules.rule(KeyMatch.inSet(Keys.SPACE), execute),
-    KeyRules.rule(KeyMatch.inSet(Keys.ESCAPE), doEscape)
+    KeyRules.rule(KeyMatch.inSet(Keys.SPACE), execute)
   ];
 };
 
 const getKeyupRules: () => Array<KeyRules.KeyRule<FlowConfig, Stateless>> = Fun.constant([
-  KeyRules.rule(KeyMatch.inSet(Keys.SPACE), KeyingTypes.stopEventForFirefox)
+  KeyRules.rule(KeyMatch.inSet(Keys.SPACE), KeyingTypes.stopEventForFirefox),
+  KeyRules.rule(KeyMatch.inSet(Keys.ESCAPE), doEscape)
 ]);
 
 export default KeyingType.typical(schema, NoState.init, getKeydownRules, getKeyupRules, () => Optional.some(focusIn));

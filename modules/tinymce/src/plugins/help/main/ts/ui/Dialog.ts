@@ -1,11 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr, Obj, Optional, Optionals } from '@ephox/katamari';
+import { Arr, Id, Obj, Optional, Optionals, Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
@@ -23,9 +16,9 @@ interface TabData {
 }
 
 const parseHelpTabsSetting = (tabsFromSettings: Options.HelpTabsSetting, tabs: TabSpecs): TabData => {
-  const newTabs = {};
+  const newTabs: Record<string, any> = {};
   const names = Arr.map(tabsFromSettings, (t) => {
-    if (typeof t === 'string') {
+    if (Type.isString(t)) {
       // Code below shouldn't care if a tab name doesn't have a spec.
       // If we find it does, we'll need to make this smarter.
       // CustomTabsTest has a case for this.
@@ -34,8 +27,9 @@ const parseHelpTabsSetting = (tabsFromSettings: Options.HelpTabsSetting, tabs: T
       }
       return t;
     } else {
-      newTabs[t.name] = t;
-      return t.name;
+      const name = t.name ?? Id.generate('tab-name');
+      newTabs[name] = t;
+      return name;
     }
   });
   return { tabs: newTabs, names };
@@ -74,7 +68,6 @@ const parseCustomTabs = (editor: Editor, customTabs: CustomTabSpecs): TabData =>
 };
 
 const init = (editor: Editor, customTabs: CustomTabSpecs) => (): void => {
-  // const tabSpecs: Record<string, Types.Dialog.TabApi> = customTabs.get();
   const { tabs, names } = parseCustomTabs(editor, customTabs);
   const foundTabs: Optional<Dialog.TabSpec>[] = Arr.map(names, (name) => Obj.get(tabs, name));
   const dialogTabs: Dialog.TabSpec[] = Optionals.cat(foundTabs);
@@ -86,7 +79,7 @@ const init = (editor: Editor, customTabs: CustomTabSpecs) => (): void => {
   editor.windowManager.open(
     {
       title: 'Help',
-      size: 'medium',
+      size: 'normal',
       body,
       buttons: [
         {

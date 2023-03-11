@@ -1,12 +1,6 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import {
-  AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloySpec, AlloyTriggers, Behaviour, CustomEvent, GuiFactory, InlineView, Keying, NativeEvents
+  AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloySpec, AlloyTriggers, Behaviour, CustomEvent, GuiFactory, InlineView, Keying, NativeEvents,
+  SketchSpec
 } from '@ephox/alloy';
 import { Arr, Cell, Id, Optional, Result } from '@ephox/katamari';
 import { Class, Css, EventArgs, Focus, SugarElement, SugarShadowDom, Width } from '@ephox/sugar';
@@ -27,8 +21,8 @@ export interface ChangeSlideEvent extends CustomEvent {
 
 const resizingClass = 'tox-pop--resizing';
 
-const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: AlloyComponent }) => {
-  const stack = Cell([ ]);
+const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: AlloyComponent }): SketchSpec => {
+  const stack = Cell<Array<{ bar: AlloyComponent; focus: Optional<SugarElement<HTMLElement>> }>>([ ]);
 
   return InlineView.sketch({
     dom: {

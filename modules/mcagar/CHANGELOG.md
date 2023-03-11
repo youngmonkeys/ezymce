@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 8.2.0 - 2022-11-23
+
+## Added
+- Add new `pWaitForEventToStopFiring` function to the `TinyContentActions` helper methods to allow tests to wait until an event stops being triggered.
+- Exposed `getUiRoot` from `TinyUiActions` for easier ShadowDOM support. #TINY-9226
+
+## 8.1.0 - 2022-09-08
+
+### Changed
+- The new `promotion` option added in TinyMCE 6.2 is set to `false` by default.
+
+## 8.0.0 - 2022-03-03
+
+### Added
+- Added the `getSel()` function to the `EditorTypes.Selection` interface.
+- Added the `setRawSelection()` function to the `TinySelections` helper methods to allow setting the selection without using any TinyMCE APIs.
+
 ### Improved
 - Updated the APIs to work with the TinyMCE 6 options API.
 

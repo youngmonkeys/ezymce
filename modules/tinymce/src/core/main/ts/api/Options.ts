@@ -1,13 +1,8 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Obj, Strings, Type } from '@ephox/katamari';
 import { PlatformDetection } from '@ephox/sand';
 
+import * as Pattern from '../textpatterns/core/Pattern';
+import * as PatternTypes from '../textpatterns/core/PatternTypes';
 import DOMUtils from './dom/DOMUtils';
 import Editor from './Editor';
 import { EditorOptions } from './OptionTypes';
@@ -29,10 +24,12 @@ const getHash = (value: string): Record<string, string> => {
   }, {} as Record<string, string>);
 };
 
+const isRegExp = (x: unknown): x is RegExp => Type.is(x, RegExp);
+
 const option = <K extends keyof EditorOptions>(name: K) => (editor: Editor) =>
   editor.options.get(name);
 
-const stringOrObjectProcessor = (value: string) =>
+const stringOrObjectProcessor = (value: unknown) =>
   Type.isString(value) || Type.isObject(value);
 
 const bodyOptionProcessor = (editor: Editor, defaultValue: string = '') => (value: unknown) => {
@@ -49,7 +46,7 @@ const bodyOptionProcessor = (editor: Editor, defaultValue: string = '') => (valu
   }
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
   const registerOption = editor.options.register;
 
   registerOption('id', {
@@ -83,7 +80,8 @@ const register = (editor: Editor) => {
   });
 
   registerOption('language_load', {
-    processor: 'boolean'
+    processor: 'boolean',
+    default: true
   });
 
   registerOption('inline', {
@@ -128,17 +126,11 @@ const register = (editor: Editor) => {
 
   registerOption('forced_root_block', {
     processor: (value) => {
-      const valid = Type.isString(value) || Type.isBoolean(value);
+      const valid = Type.isString(value) && Strings.isNotEmpty(value);
       if (valid) {
-        if (value === false) {
-          return { value: '', valid };
-        } else if (value === true) {
-          return { value: 'p', valid };
-        } else {
-          return { value, valid };
-        }
+        return { value, valid };
       } else {
-        return { valid: false, message: 'Must be a string or a boolean.' };
+        return { valid: false, message: 'Must be a non-empty string.' };
       }
     },
     default: 'p'
@@ -147,6 +139,14 @@ const register = (editor: Editor) => {
   registerOption('forced_root_block_attrs', {
     processor: 'object',
     default: {}
+  });
+
+  registerOption('newline_behavior', {
+    processor: (value) => {
+      const valid = Arr.contains([ 'block', 'linebreak', 'invert', 'default' ], value);
+      return valid ? { value, valid } : { valid: false, message: 'Must be one of: block, linebreak, invert or default.' };
+    },
+    default: 'default'
   });
 
   registerOption('br_newline_selector', {
@@ -165,8 +165,16 @@ const register = (editor: Editor) => {
   });
 
   registerOption('end_container_on_empty_block', {
-    processor: 'boolean',
-    default: false
+    processor: (value) => {
+      if (Type.isBoolean(value)) {
+        return { valid: true, value };
+      } else if (Type.isString(value)) {
+        return { valid: true, value };
+      } else {
+        return { valid: false, message: 'Must be boolean or a string' };
+      }
+    },
+    default: 'blockquote'
   });
 
   registerOption('font_size_style_values', {
@@ -211,11 +219,6 @@ const register = (editor: Editor) => {
   });
 
   registerOption('images_upload_url', {
-    processor: 'string',
-    default: ''
-  });
-
-  registerOption('images_upload_base_path', {
     processor: 'string',
     default: ''
   });
@@ -327,7 +330,7 @@ const register = (editor: Editor) => {
 
   registerOption('inline_boundaries_selector', {
     processor: 'string',
-    default: 'a[href],code,.mce-annotation'
+    default: 'a[href],code,span.mce-annotation'
   });
 
   registerOption('object_resizing', {
@@ -376,6 +379,11 @@ const register = (editor: Editor) => {
   registerOption('format_empty_lines', {
     processor: 'boolean',
     default: false
+  });
+
+  registerOption('format_noneditable_selector', {
+    processor: 'string',
+    default: ''
   });
 
   registerOption('preview_styles', {
@@ -435,8 +443,8 @@ const register = (editor: Editor) => {
   });
 
   registerOption('plugins', {
-    processor: 'string',
-    default: ''
+    processor: 'string[]',
+    default: []
   });
 
   registerOption('external_plugins', {
@@ -445,6 +453,15 @@ const register = (editor: Editor) => {
 
   registerOption('forced_plugins', {
     processor: 'string[]'
+  });
+
+  registerOption('model', {
+    processor: 'string',
+    default: editor.hasPlugin('rtc') ? 'plugin' : 'dom'
+  });
+
+  registerOption('model_url', {
+    processor: 'string'
   });
 
   registerOption('block_unsupported_drop', {
@@ -527,15 +544,11 @@ const register = (editor: Editor) => {
 
   registerOption('convert_fonts_to_spans', {
     processor: 'boolean',
-    default: true
+    default: true,
+    deprecated: true
   });
 
   registerOption('fix_list_elements', {
-    processor: 'boolean',
-    default: false
-  });
-
-  registerOption('padd_empty_with_br', {
     processor: 'boolean',
     default: false
   });
@@ -551,11 +564,13 @@ const register = (editor: Editor) => {
 
   registerOption('inline_styles', {
     processor: 'boolean',
-    default: true
+    default: true,
+    deprecated: true
   });
 
   registerOption('element_format', {
-    processor: 'string'
+    processor: 'string',
+    default: 'html'
   });
 
   registerOption('entities', {
@@ -563,7 +578,8 @@ const register = (editor: Editor) => {
   });
 
   registerOption('schema', {
-    processor: 'string'
+    processor: 'string',
+    default: 'html5'
   });
 
   registerOption('convert_urls', {
@@ -646,19 +662,63 @@ const register = (editor: Editor) => {
     default: false
   });
 
-  registerOption('content_editable_state', {
+  registerOption('api_key', {
+    processor: 'string'
+  });
+
+  registerOption('paste_block_drop', {
+    processor: 'boolean',
+    default: false
+  });
+
+  registerOption('paste_data_images', {
     processor: 'boolean',
     default: true
   });
 
-  registerOption('api_key', {
-    processor: 'string'
+  registerOption('paste_preprocess', {
+    processor: 'function'
+  });
+
+  registerOption('paste_postprocess', {
+    processor: 'function'
+  });
+
+  registerOption('paste_webkit_styles', {
+    processor: 'string',
+    default: 'none'
+  });
+
+  registerOption('paste_remove_styles_if_webkit', {
+    processor: 'boolean',
+    default: true
+  });
+
+  registerOption('paste_merge_formats', {
+    processor: 'boolean',
+    default: true
+  });
+
+  registerOption('smart_paste', {
+    processor: 'boolean',
+    default: true
+  });
+
+  registerOption('paste_as_text', {
+    processor: 'boolean',
+    default: false
+  });
+
+  registerOption('paste_tab_spaces', {
+    processor: 'number',
+    default: 4
   });
 
   registerOption('text_patterns', {
     processor: (value) => {
       if (Type.isArrayOf(value, Type.isObject) || value === false) {
-        return { value: value === false ? [] : value, valid: true };
+        const patterns = value === false ? [] : value;
+        return { value: Pattern.fromRawPatterns(patterns), valid: true };
       } else {
         return { valid: false, message: 'Must be an array of objects or false.' };
       }
@@ -678,8 +738,59 @@ const register = (editor: Editor) => {
     ]
   });
 
+  registerOption('text_patterns_lookup', {
+    processor: (value) => {
+      if (Type.isFunction(value)) {
+        return {
+          value: Pattern.fromRawPatternsLookup(value as PatternTypes.RawDynamicPatternsLookup),
+          valid: true,
+        };
+      } else {
+        return { valid: false, message: 'Must be a single function' };
+      }
+    },
+    default: (_ctx: PatternTypes.DynamicPatternContext): PatternTypes.Pattern[] => [ ]
+  });
+
+  registerOption('noneditable_class', {
+    processor: 'string',
+    default: 'mceNonEditable'
+  });
+
+  registerOption('editable_class', {
+    processor: 'string',
+    default: 'mceEditable'
+  });
+
+  registerOption('noneditable_regexp', {
+    processor: (value) => {
+      if (Type.isArrayOf(value, isRegExp)) {
+        return { value, valid: true };
+      } else if (isRegExp(value)) {
+        return { value: [ value ], valid: true };
+      } else {
+        return { valid: false, message: 'Must be a RegExp or an array of RegExp.' };
+      }
+    },
+    default: []
+  });
+
+  registerOption('table_tab_navigation', {
+    processor: 'boolean',
+    default: true
+  });
+
+  registerOption('highlight_on_focus', {
+    processor: 'boolean',
+    default: false
+  });
+
+  registerOption('xss_sanitization', {
+    processor: 'boolean',
+    default: true
+  });
+
   // These options must be registered later in the init sequence due to their default values
-  // TODO: TINY-8234 Should we have a way to lazily load the default values?
   editor.on('ScriptsLoaded', () => {
     registerOption('directionality', {
       processor: 'string',
@@ -703,6 +814,7 @@ const getContentSecurityPolicy = option('content_security_policy');
 const shouldPutBrInPre = option('br_in_pre');
 const getForcedRootBlock = option('forced_root_block');
 const getForcedRootBlockAttrs = option('forced_root_block_attrs');
+const getNewlineBehavior = option('newline_behavior');
 const getBrNewLineSelector = option('br_newline_selector');
 const getNoNewLineSelector = option('no_newline_selector');
 const shouldKeepStyles = option('keep_styles');
@@ -734,10 +846,13 @@ const getEventRoot = option('event_root');
 const getServiceMessage = option('service_message');
 const getTheme = option('theme');
 const getThemeUrl = option('theme_url');
+const getModel = option('model');
+const getModelUrl = option('model_url');
 const isInlineBoundariesEnabled = option('inline_boundaries');
 const getFormats = option('formats');
 const getPreviewStyles = option('preview_styles');
 const canFormatEmptyLines = option('format_empty_lines');
+const getFormatNoneditableSelector = option('format_noneditable_selector');
 const getCustomUiSelector = option('custom_ui_selector');
 const isInline = option('inline');
 const hasHiddenInput = option('hidden_input');
@@ -761,8 +876,28 @@ const getUrlConverterCallback = option('urlconverter_callback');
 const getAutoFocus = option('auto_focus');
 const shouldBrowserSpellcheck = option('browser_spellcheck');
 const getProtect = option('protect');
-const getContentEditableState = option('content_editable_state');
+const shouldPasteBlockDrop = option('paste_block_drop');
+const shouldPasteDataImages = option('paste_data_images');
+const getPastePreProcess = option('paste_preprocess');
+const getPastePostProcess = option('paste_postprocess');
+const getPasteWebkitStyles = option('paste_webkit_styles');
+const shouldPasteRemoveWebKitStyles = option('paste_remove_styles_if_webkit');
+const shouldPasteMergeFormats = option('paste_merge_formats');
+const isSmartPasteEnabled = option('smart_paste');
+const isPasteAsTextEnabled = option('paste_as_text');
+const getPasteTabSpaces = option('paste_tab_spaces');
+const shouldAllowHtmlDataUrls = option('allow_html_data_urls');
 const getTextPatterns = option('text_patterns');
+const getTextPatternsLookup = option('text_patterns_lookup');
+const getNonEditableClass = option('noneditable_class');
+const getEditableClass = option('editable_class');
+const getNonEditableRegExps = option('noneditable_regexp');
+const shouldPreserveCData = option('preserve_cdata');
+const shouldHighlightOnFocus = option('highlight_on_focus');
+const shouldSanitizeXss = option('xss_sanitization');
+
+const hasTextPatternsLookup = (editor: Editor): boolean =>
+  editor.options.isSet('text_patterns_lookup');
 
 const getFontStyleValues = (editor: Editor): string[] =>
   Tools.explode(editor.options.get('font_size_style_values'));
@@ -773,8 +908,10 @@ const getFontSizeClasses = (editor: Editor): string[] =>
 const isEncodingXml = (editor: Editor): boolean =>
   editor.options.get('encoding') === 'xml';
 
-const hasForcedRootBlock = (editor: Editor): boolean =>
-  getForcedRootBlock(editor) !== '';
+const getAllowedImageFileTypes = (editor: Editor): string[] =>
+  Tools.explode(editor.options.get('images_file_types'));
+
+const hasTableTabNavigation = option('table_tab_navigation');
 
 export {
   register,
@@ -788,6 +925,7 @@ export {
   shouldPutBrInPre,
   getForcedRootBlock,
   getForcedRootBlockAttrs,
+  getNewlineBehavior,
   getBrNewLineSelector,
   getNoNewLineSelector,
   shouldKeepStyles,
@@ -819,19 +957,21 @@ export {
   getEventRoot,
   getServiceMessage,
   getTheme,
+  getModel,
   isInlineBoundariesEnabled,
   getFormats,
   getPreviewStyles,
   canFormatEmptyLines,
+  getFormatNoneditableSelector,
   getCustomUiSelector,
   getThemeUrl,
+  getModelUrl,
   isInline,
   hasHiddenInput,
   shouldPatchSubmit,
   isEncodingXml,
   shouldAddFormSubmitTrigger,
   shouldAddUnloadTrigger,
-  hasForcedRootBlock,
   getCustomUndoRedoLevels,
   shouldDisableNodeChange,
   isReadOnly,
@@ -850,6 +990,26 @@ export {
   getAutoFocus,
   shouldBrowserSpellcheck,
   getProtect,
-  getContentEditableState,
-  getTextPatterns
+  shouldPasteBlockDrop,
+  shouldPasteDataImages,
+  getPastePreProcess,
+  getPastePostProcess,
+  getPasteWebkitStyles,
+  shouldPasteRemoveWebKitStyles,
+  shouldPasteMergeFormats,
+  isSmartPasteEnabled,
+  isPasteAsTextEnabled,
+  getPasteTabSpaces,
+  shouldAllowHtmlDataUrls,
+  getAllowedImageFileTypes,
+  getTextPatterns,
+  getTextPatternsLookup,
+  hasTextPatternsLookup,
+  getNonEditableClass,
+  getNonEditableRegExps,
+  getEditableClass,
+  hasTableTabNavigation,
+  shouldPreserveCData,
+  shouldHighlightOnFocus,
+  shouldSanitizeXss
 };

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
 import Delay from 'tinymce/core/api/util/Delay';
@@ -29,7 +22,7 @@ const pickFile = (editor: Editor): Promise<File[]> => new Promise((resolve) => {
   const cancelHandler = (e: EditorEvent<{}>) => {
     const cleanup = () => {
       resolve([]);
-      fileInput.parentNode.removeChild(fileInput);
+      fileInput.parentNode?.removeChild(fileInput);
     };
 
     // Android will fire focusin before the input change event

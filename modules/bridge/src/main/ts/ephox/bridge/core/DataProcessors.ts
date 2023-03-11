@@ -8,6 +8,7 @@ import { colorPickerDataProcessor } from '../components/dialog/ColorPicker';
 import { customEditorDataProcessor } from '../components/dialog/CustomEditor';
 import { dropZoneDataProcessor } from '../components/dialog/Dropzone';
 import { iframeDataProcessor } from '../components/dialog/Iframe';
+import { imagePreviewDataProcessor } from '../components/dialog/ImagePreview';
 import { inputDataProcessor } from '../components/dialog/Input';
 import { listBoxDataProcessor } from '../components/dialog/ListBox';
 import { selectBoxDataProcessor } from '../components/dialog/SelectBox';
@@ -25,13 +26,14 @@ interface NamedItem {
 
 const isNamedItem = (obj: any): obj is NamedItem => Type.isString(obj.type) && Type.isString(obj.name);
 
-const dataProcessors = {
+const dataProcessors: Record<string, StructureProcessor> = {
   checkbox: checkboxDataProcessor,
   colorinput: colorInputDataProcessor,
   colorpicker: colorPickerDataProcessor,
   dropzone: dropZoneDataProcessor,
   input: inputDataProcessor,
   iframe: iframeDataProcessor,
+  imagepreview: imagePreviewDataProcessor,
   selectbox: selectBoxDataProcessor,
   sizeinput: sizeInputDataProcessor,
   slider: sliderInputDataProcessor,

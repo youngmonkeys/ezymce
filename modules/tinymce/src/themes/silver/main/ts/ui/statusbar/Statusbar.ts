@@ -1,14 +1,8 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { SimpleSpec } from '@ephox/alloy';
+import { Behaviour, Focusing, SimpleSpec } from '@ephox/alloy';
 
 import Editor from 'tinymce/core/api/Editor';
 import I18n from 'tinymce/core/api/util/I18n';
+import { Logo } from 'tinymce/themes/silver/resources/StatusbarLogo';
 
 import * as Options from '../../api/Options';
 import { UiFactoryBackstageProviders } from '../../backstage/Backstage';
@@ -19,14 +13,28 @@ import { renderWordCount } from './WordCount';
 const renderStatusbar = (editor: Editor, providersBackstage: UiFactoryBackstageProviders): SimpleSpec => {
 
   const renderBranding = (): SimpleSpec => {
-    const label = I18n.translate([ 'Powered by {0}', 'Tiny' ]);
-    const linkHtml = `<a href="https://www.tiny.cloud/?utm_campaign=editor_referral&amp;utm_medium=poweredby&amp;utm_source=tinymce&amp;utm_content=v5" rel="noopener" target="_blank" tabindex="-1" aria-label="${label}">${label}</a>`;
     return {
       dom: {
         tag: 'span',
         classes: [ 'tox-statusbar__branding' ],
-        innerHtml: linkHtml
-      }
+      },
+      components: [
+        {
+          dom: {
+            tag: 'a',
+            attributes: {
+              'href': 'https://www.tiny.cloud/powered-by-tiny?utm_campaign=editor_referral&utm_medium=poweredby&utm_source=tinymce&utm_content=v6',
+              'rel': 'noopener',
+              'target': '_blank',
+              'aria-label': I18n.translate([ 'Powered by {0}', 'Tiny' ])
+            },
+            innerHtml: Logo.trim()
+          },
+          behaviours: Behaviour.derive([
+            Focusing.config({})
+          ])
+        }
+      ]
     };
   };
 

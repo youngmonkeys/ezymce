@@ -1,6 +1,7 @@
 import { ApproxStructure, Assertions, Keyboard, Keys, UiFinder } from '@ephox/agar';
 import { AlloyComponent, Disabling, GuiFactory, Representing, TestHelpers } from '@ephox/alloy';
 import { describe, it } from '@ephox/bedrock-client';
+import { Optional } from '@ephox/katamari';
 import { assert } from 'chai';
 
 import { renderCheckbox } from 'tinymce/themes/silver/ui/general/Checkbox';
@@ -20,8 +21,8 @@ describe('headless.tinymce.themes.silver.components.checkbox.Checkbox component 
     renderCheckbox({
       label: 'TestCheckbox',
       name: 'test-check-box',
-      disabled: false
-    }, providers)
+      enabled: true,
+    }, providers, Optional.none())
   ));
 
   const assertCheckboxState = (label: string, component: AlloyComponent, expChecked: boolean) => {
@@ -97,6 +98,7 @@ describe('headless.tinymce.themes.silver.components.checkbox.Checkbox component 
 
   it('Keyboard events', () => {
     const component = hook.component();
+    setCheckboxState(component, true);
     pressKeyOnCheckbox(component, Keys.space());
     assertCheckboxState('checked > unchecked', component, false);
     pressKeyOnCheckbox(component, Keys.space());

@@ -1,15 +1,17 @@
-import { describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyHooks } from '@ephox/wrap-mcagar';
+import { context, describe, it } from '@ephox/bedrock-client';
+import { LegacyUnit, TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { GetContentEvent, SetContentEvent } from 'tinymce/core/api/EventTypes';
+import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
+import { Bookmark } from 'tinymce/core/bookmark/BookmarkTypes';
 import * as CaretContainer from 'tinymce/core/caret/CaretContainer';
 import * as Zwsp from 'tinymce/core/text/Zwsp';
 
 describe('browser.tinymce.core.dom.SelectionTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     add_unload_trigger: false,
-    forced_root_block: '',
     entities: 'raw',
     valid_styles: {
       '*': 'color,font-size,font-family,background-color,font-weight,font-style,text-decoration,float,margin,' +
@@ -18,17 +20,15 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     custom_elements: 'custom1,~custom2',
     extended_valid_elements: 'custom1,custom2',
     base_url: '/project/tinymce/js/tinymce'
-  }, []);
+  }, [], true);
 
   it('getContent', () => {
     const editor = hook.editor();
-    let rng, eventObj;
-
-    editor.focus();
+    let rng = editor.dom.createRng();
+    let eventObj: EditorEvent<GetContentEvent> | undefined;
 
     // Get selected contents
     editor.setContent('<p>text</p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -43,9 +43,7 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     LegacyUnit.equal(editor.selection.getContent(), '', 'Get selected contents (collapsed)');
 
     // Get selected contents, onGetContent event
-    eventObj = {};
-
-    const handler = (event) => {
+    const handler = (event: EditorEvent<GetContentEvent>) => {
       eventObj = event;
     };
 
@@ -56,7 +54,7 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
     editor.selection.getContent();
-    LegacyUnit.equal(eventObj.content, '<p>text</p>', 'Get selected contents, onGetContent event');
+    LegacyUnit.equal(eventObj?.content, '<p>text</p>', 'Get selected contents, onGetContent event');
     editor.off('GetContent', handler);
   });
 
@@ -64,8 +62,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     const editor = hook.editor();
     editor.setContent('<p><em>text</em></p>');
     const rng = editor.dom.createRng();
-    rng.setStart(editor.dom.select('em')[0].firstChild, 1);
-    rng.setEnd(editor.dom.select('em')[0].firstChild, 3);
+    rng.setStart(editor.dom.select('em')[0].firstChild as Text, 1);
+    rng.setEnd(editor.dom.select('em')[0].firstChild as Text, 3);
     editor.selection.setRng(rng);
     LegacyUnit.equal(editor.selection.getContent({ contextual: true }), '<em>ex</em>', 'Get selected contents');
   });
@@ -83,11 +81,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('setContent', () => {
     const editor = hook.editor();
-    let rng, eventObj;
+    let rng = editor.dom.createRng();
+    let eventObj: EditorEvent<SetContentEvent> | undefined;
 
     // Set contents at selection
     editor.setContent('<p>text</p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -101,7 +99,7 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
     editor.selection.setContent('<img src="a" onerror="alert(1)" />');
-    LegacyUnit.equal(editor.getContent(), '<img src="a" />', 'Set XSS at selection');
+    LegacyUnit.equal(editor.getContent(), '<p><img src="a"></p>', 'Set XSS at selection');
 
     // Set contents at selection (collapsed)
     editor.setContent('<p>text</p>');
@@ -115,17 +113,17 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     // Insert in middle of paragraph
     editor.setContent('<p>beforeafter</p>');
     rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 'before'.length);
-    rng.setEnd(editor.getBody().firstChild.firstChild, 'before'.length);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 'before'.length);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 'before'.length);
     editor.selection.setRng(rng);
     editor.selection.setContent('<br />');
-    LegacyUnit.equal(editor.getContent(), '<p>before<br />after</p>', 'Set contents at selection (inside paragraph)');
+    LegacyUnit.equal(editor.getContent(), '<p>before<br>after</p>', 'Set contents at selection (inside paragraph)');
 
     // Check the caret is left in the correct position.
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild, 'Selection start container');
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild as HTMLParagraphElement, 'Selection start container');
     LegacyUnit.equal(rng.startOffset, 2, 'Selection start offset');
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild, 'Selection end container');
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild as HTMLParagraphElement, 'Selection end container');
     LegacyUnit.equal(rng.endOffset, 2, 'Selection end offset');
 
     editor.setContent('<p>text</p>');
@@ -142,9 +140,7 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     LegacyUnit.equal(rng.endOffset, 0, 'Selection end offset');
 
     // Set selected contents, onSetContent event
-    eventObj = {};
-
-    const handler = (event) => {
+    const handler = (event: EditorEvent<SetContentEvent>) => {
       eventObj = event;
     };
 
@@ -155,19 +151,18 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
     editor.selection.setContent('<div>text</div>');
-    LegacyUnit.equal(eventObj.content, '<div>text</div>', 'Set selected contents, onSetContent event');
+    LegacyUnit.equal(eventObj?.content, '<div>text</div>', 'Set selected contents, onSetContent event');
     editor.off('SetContent', handler);
   });
 
   it('getStart/getEnd', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     // Selected contents
     editor.setContent('<p id="a">text</p><p id="b">text</p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 0);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 0);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 0);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 0);
     editor.selection.setRng(rng);
     LegacyUnit.equal(editor.selection.getStart().id, 'a', 'Selected contents (getStart)');
     LegacyUnit.equal(editor.selection.getEnd().id, 'b', 'Selected contents (getEnd)');
@@ -175,8 +170,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     // Selected contents (collapsed)
     editor.setContent('<p id="a">text</p>\n<p id="b">text</p>');
     rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 0);
-    rng.setEnd(editor.getBody().firstChild.firstChild, 0);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 0);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 0);
     editor.selection.setRng(rng);
     LegacyUnit.equal(editor.selection.getStart().id, 'a', 'Selected contents (getStart, collapsed)');
     LegacyUnit.equal(editor.selection.getEnd().id, 'a', 'Selected contents (getEnd, collapsed)');
@@ -196,8 +191,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     const editor = hook.editor();
     editor.setContent('<p><!-- x --></p>');
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 0);
-    rng.setEnd(editor.getBody().firstChild, 0);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 0);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 0);
     editor.selection.setRng(rng);
 
     LegacyUnit.equal(editor.selection.getStart().nodeName, 'P', 'Node name should be paragraph');
@@ -208,24 +203,24 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('getBookmark/setBookmark (persistent)', () => {
     const editor = hook.editor();
-    let rng, bookmark;
+    let bookmark: Bookmark;
+    let rng = editor.dom.createRng();
 
     // Get persistent bookmark simple text selection
-    editor.setContent('text');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 3);
+    editor.setContent('<p>text</p>');
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     bookmark = editor.selection.getBookmark();
-    LegacyUnit.equal(editor.getContent(), 'text', 'Editor contents (text)');
+    LegacyUnit.equal(editor.getContent(), '<p>text</p>', 'Editor contents (text)');
     editor.selection.moveToBookmark(bookmark);
     LegacyUnit.equal(editor.selection.getContent(), 'ex', 'Selected contents (text)');
 
     // Get persistent bookmark multiple elements text selection
     editor.setContent('<p>text</p>\n<p>text</p>');
     rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     bookmark = editor.selection.getBookmark();
     LegacyUnit.equal(editor.getContent(), '<p>text</p>\n<p>text</p>', 'Editor contents (elements)');
@@ -235,24 +230,24 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('getBookmark/setBookmark (simple)', () => {
     const editor = hook.editor();
-    let rng, bookmark;
+    let bookmark: Bookmark;
+    let rng = editor.dom.createRng();
 
     // Get persistent bookmark simple text selection
-    editor.setContent('text');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 3);
+    editor.setContent('<p>text</p>');
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     bookmark = editor.selection.getBookmark(1);
-    LegacyUnit.equal(editor.getContent(), 'text', 'Editor contents (text)');
+    LegacyUnit.equal(editor.getContent(), '<p>text</p>', 'Editor contents (text)');
     editor.selection.moveToBookmark(bookmark);
     LegacyUnit.equal(editor.selection.getContent(), 'ex', 'Selected contents (text)');
 
     // Get persistent bookmark multiple elements text selection
     editor.setContent('<p>text</p>\n<p>text</p>');
     rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     bookmark = editor.selection.getBookmark(1);
     LegacyUnit.equal(editor.getContent(), '<p>text</p>\n<p>text</p>', 'Editor contents (elements)');
@@ -262,13 +257,13 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('getBookmark/setBookmark (nonintrusive) - simple text selection', () => {
     const editor = hook.editor();
-    editor.setContent('text');
+    editor.setContent('<p>text</p>');
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2);
-    LegacyUnit.equal(editor.getContent(), 'text', 'Editor contents (text)');
+    LegacyUnit.equal(editor.getContent(), '<p>text</p>', 'Editor contents (text)');
     editor.selection.moveToBookmark(bookmark);
     LegacyUnit.equal(editor.selection.getContent(), 'ex', 'Selected contents (text)');
   });
@@ -291,8 +286,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     // Get non intrusive bookmark multiple elements text selection
     editor.setContent('<p>text</p>\n<p>text</p>');
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.firstChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2);
     LegacyUnit.equal(editor.getContent(), '<p>text</p>\n<p>text</p>', 'Editor contents (elements)');
@@ -309,8 +304,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode('a'));
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode('text'));
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.lastChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.lastChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2);
     LegacyUnit.equal(editor.getContent(), '<p>textaaatext</p>\n<p>text</p>', 'Editor contents (fragmented, elements)');
@@ -327,8 +322,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode('a'));
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode('text'));
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.lastChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.lastChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.setContent(editor.getContent());
@@ -346,8 +341,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode(Zwsp.ZWSP));
     editor.dom.select('p')[0].appendChild(editor.dom.doc.createTextNode('text'));
     const rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.lastChild, 1);
-    rng.setEnd(editor.getBody().lastChild.firstChild, 3);
+    rng.setStart(editor.getBody().firstChild?.lastChild as Text, 1);
+    rng.setEnd(editor.getBody().lastChild?.firstChild as Text, 3);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.setContent(editor.getContent());
@@ -358,135 +353,128 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark before image', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><img src="about:blank" /></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 0);
-    rng.setEnd(editor.getBody().firstChild, 0);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 0);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 0);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.startOffset, 0);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.endOffset, 0);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark before/after image', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><img src="about:blank" /></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 0);
-    rng.setEnd(editor.getBody().firstChild, 1);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 0);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 1);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.startOffset, 0);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.endOffset, 1);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark after image', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><img src="about:blank" /></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 1);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 1);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 1);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.startOffset, 1);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.endOffset, 1);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark before element', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
-    editor.setContent('abc<b>123</b>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 0);
-    rng.setEnd(editor.getBody().firstChild, 2);
+    editor.setContent('<p>abc<b>123</b></p>');
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 0);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 2);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.startOffset, 0);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.endOffset, 2);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark after element', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     // Get bookmark after element
-    editor.setContent('<b>123</b>abc');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().lastChild, 1);
-    rng.setEnd(editor.getBody().lastChild, 2);
+    editor.setContent('<p><b>123</b>abc</p>');
+    rng.setStart(editor.getBody().lastChild as HTMLParagraphElement, 1);
+    rng.setEnd(editor.getBody().lastChild as HTMLParagraphElement, 2);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().lastChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().lastChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.startOffset, 1);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().lastChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().lastChild as HTMLParagraphElement);
     LegacyUnit.equal(rng.endOffset, 2);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark inside element', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
-    editor.setContent('abc<b>123</b>abc');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().childNodes[1].firstChild, 1);
-    rng.setEnd(editor.getBody().childNodes[1].firstChild, 2);
+    editor.setContent('<p>abc<b>123</b>abc</p>');
+    rng.setStart(editor.getBody().firstChild?.childNodes[1].firstChild as Text, 1);
+    rng.setEnd(editor.getBody().firstChild?.childNodes[1].firstChild as Text, 2);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().childNodes[1].firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild?.childNodes[1].firstChild as Text);
     LegacyUnit.equal(rng.startOffset, 1);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().childNodes[1].firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild?.childNodes[1].firstChild as Text);
     LegacyUnit.equal(rng.endOffset, 2);
   });
 
   it('getBookmark/setBookmark (nonintrusive) - Get bookmark inside root text', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
-    editor.setContent('abc');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 2);
+    editor.setContent('<p>abc</p>');
+    rng.setStart(editor.getBody().firstChild?.firstChild as Text, 1);
+    rng.setEnd(editor.getBody().firstChild?.firstChild as Text, 2);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2, true);
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.getBody().firstChild?.firstChild as Text);
     LegacyUnit.equal(rng.startOffset, 1);
-    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.getBody().firstChild?.firstChild as Text);
     LegacyUnit.equal(rng.endOffset, 2);
   });
 
@@ -499,18 +487,18 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.getBody().innerHTML = editor.getBody().innerHTML;
     editor.selection.moveToBookmark(bookmark);
     const rng = editor.selection.getRng();
-    LegacyUnit.equalDom(rng.startContainer, editor.dom.select('td')[0].firstChild);
+    LegacyUnit.equalDom(rng.startContainer, editor.dom.select('td')[0].firstChild as Text);
     LegacyUnit.equal(rng.startOffset, 1);
-    LegacyUnit.equalDom(rng.endContainer, editor.dom.select('td')[0].firstChild);
+    LegacyUnit.equalDom(rng.endContainer, editor.dom.select('td')[0].firstChild as Text);
     LegacyUnit.equal(rng.endOffset, 2);
   });
 
   it('getBookmark/setBookmark on cE=false', () => {
     const editor = hook.editor();
-    editor.setContent('text<span contentEditable="false">1</span>');
+    editor.setContent('<p>text<span contentEditable="false">1</span></p>');
     editor.selection.select(editor.dom.select('span')[0]);
     const bookmark = editor.selection.getBookmark(2);
-    editor.setContent('text<span contentEditable="false">1</span>');
+    editor.setContent('<p>text<span contentEditable="false">1</span></p>');
     editor.selection.moveToBookmark(bookmark);
     LegacyUnit.equalDom(editor.selection.getNode(), editor.dom.select('span')[0]);
   });
@@ -520,8 +508,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.setContent('<p><input><span contentEditable="false">1</span></p>');
     CaretContainer.insertInline(editor.dom.select('span')[0], true);
     const rng = editor.dom.createRng();
-    rng.setStart(editor.dom.select('span')[0].previousSibling, 0);
-    rng.setEnd(editor.dom.select('span')[0].previousSibling, 0);
+    rng.setStart(editor.dom.select('span')[0].previousSibling as HTMLInputElement, 0);
+    rng.setEnd(editor.dom.select('span')[0].previousSibling as HTMLInputElement, 0);
     editor.selection.setRng(rng);
     const bookmark = editor.selection.getBookmark(2);
     editor.setContent('<p><input><span contentEditable="false">1</span></p>');
@@ -582,62 +570,65 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     const editor = hook.editor();
     editor.setContent('<table><tbody><tr><td id="a"><br /></td><td id="b"><br /></td></tr></tbody></table>');
     editor.selection.select(editor.dom.select('table')[0], true);
-    LegacyUnit.equal(editor.dom.getParent(editor.selection.getStart(), 'td').id, 'a', 'Expand to text content 2 (start)');
-    LegacyUnit.equal(editor.dom.getParent(editor.selection.getEnd(), 'td').id, 'b', 'Expand to text content 2 (end)');
+    LegacyUnit.equal(editor.dom.getParent(editor.selection.getStart(), 'td')?.id, 'a', 'Expand to text content 2 (start)');
+    LegacyUnit.equal(editor.dom.getParent(editor.selection.getEnd(), 'td')?.id, 'b', 'Expand to text content 2 (end)');
   });
 
   it('getNode', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p id="p1"><span id="s1">span1</span> word <span id="s2">span2</span> word <span id="s3">span3</span></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.dom.get('s1').firstChild, 0);
-    rng.setEnd(editor.dom.get('s1').nextSibling, 0);
+    const p1 = editor.dom.get('p1') as HTMLParagraphElement;
+    const s1 = editor.dom.get('s1') as HTMLSpanElement;
+    const s2 = editor.dom.get('s2') as HTMLSpanElement;
+    const s3 = editor.dom.get('s3') as HTMLSpanElement;
+
+    rng.setStart(s1.firstChild as Text, 0);
+    rng.setEnd(s1.nextSibling as Text, 0);
     editor.selection.setRng(rng);
     LegacyUnit.equalDom(
       editor.selection.getNode(),
-      editor.dom.get('s1'),
+      s1,
       'Detect selection ends immediately after node at start of paragraph.'
     );
 
     rng = editor.dom.createRng();
-    rng.setStart(editor.dom.get('s2').previousSibling, (editor.dom.get('s2').previousSibling as Text).length);
-    rng.setEnd(editor.dom.get('s2').nextSibling, 0);
+    rng.setStart(s2.previousSibling as Text, (s2.previousSibling as Text).length);
+    rng.setEnd(s2.nextSibling as Text, 0);
     editor.selection.setRng(rng);
     LegacyUnit.equalDom(
       editor.selection.getNode(),
-      editor.dom.get('s2'),
+      s2,
       'Detect selection immediately surrounds node in middle of paragraph.'
     );
 
     rng = editor.dom.createRng();
-    rng.setStart(editor.dom.get('s3').previousSibling, (editor.dom.get('s3').previousSibling as Text).length);
-    rng.setEnd(editor.dom.get('s3').lastChild, (editor.dom.get('s3').lastChild as Text).length);
+    rng.setStart(s3.previousSibling as Text, (s3.previousSibling as Text).length);
+    rng.setEnd(s3.lastChild as Text, (s3.lastChild as Text).length);
     editor.selection.setRng(rng);
     LegacyUnit.equalDom(
       editor.selection.getNode(),
-      editor.dom.get('s3'),
+      s3,
       'Detect selection starts immediately before node at end of paragraph.'
     );
 
     rng = editor.dom.createRng();
-    rng.setStart(editor.dom.get('s2').previousSibling, (editor.dom.get('s2').previousSibling as Text).length);
-    rng.setEnd(editor.dom.get('s3').lastChild, (editor.dom.get('s3').lastChild as Text).length);
+    rng.setStart(s2.previousSibling as Text, (s2.previousSibling as Text).length);
+    rng.setEnd(s3.lastChild as Text, (s3.lastChild as Text).length);
     editor.selection.setRng(rng);
     LegacyUnit.equalDom(
       editor.selection.getNode(),
-      editor.dom.get('p1'),
+      p1,
       'Detect selection wrapping multiple nodes does not collapse.'
     );
   });
 
   it('normalize to text node from document', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p>text</p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getDoc(), 0);
     rng.setEnd(editor.getDoc(), 0);
     editor.selection.setRng(rng);
@@ -652,10 +643,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to br from document', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><br /></p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getDoc(), 0);
     rng.setEnd(editor.getDoc(), 0);
     editor.selection.setRng(rng);
@@ -671,12 +661,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize with contentEditable:false element', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p>a<b contentEditable="false">b</b>c</p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild.lastChild, 0);
-    rng.setEnd(editor.getBody().firstChild.lastChild, 0);
+    rng.setStart(editor.getBody().firstChild?.lastChild as Text, 0);
+    rng.setEnd(editor.getBody().firstChild?.lastChild as Text, 0);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -704,10 +693,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to text node from body', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p>text</p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 0);
     editor.selection.setRng(rng);
@@ -722,10 +710,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to br from body', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><br /></p>');
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 0);
     editor.selection.setRng(rng);
@@ -741,10 +728,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize ignore img', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<img src="about:blank " />';
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -761,10 +747,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to before/after img', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p><img src="about:blank " /></p>';
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -781,10 +766,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to before/after pre', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<pre>a<pre>';
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -801,10 +785,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize to text node inside P', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p>abc</p>';
-    rng = editor.dom.createRng();
     rng.setStart(editor.getBody(), 0);
     rng.setEnd(editor.getBody(), 1);
     editor.selection.setRng(rng);
@@ -825,10 +808,10 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
     const rng = editor.selection.getRng();
     LegacyUnit.equal(rng.startContainer.nodeName, '#text', 'startContainer node name');
-    LegacyUnit.equal(rng.startContainer.parentNode.nodeName, 'B');
+    LegacyUnit.equal(rng.startContainer.parentNode?.nodeName, 'B');
     LegacyUnit.equal(rng.startOffset, 1, 'startContainer offset');
     LegacyUnit.equal(rng.endContainer.nodeName, '#text');
-    LegacyUnit.equal(rng.endContainer.parentNode.nodeName, 'B');
+    LegacyUnit.equal(rng.endContainer.parentNode?.nodeName, 'B');
     LegacyUnit.equal(rng.endOffset, 1, 'endOffset offset');
   });
 
@@ -840,10 +823,10 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
     const rng = editor.selection.getRng();
     LegacyUnit.equal(rng.startContainer.nodeName, '#text', 'startContainer node name');
-    LegacyUnit.equal(rng.startContainer.parentNode.nodeName, 'I');
+    LegacyUnit.equal(rng.startContainer.parentNode?.nodeName, 'I');
     LegacyUnit.equal(rng.startOffset, 0, 'startContainer offset');
     LegacyUnit.equal(rng.endContainer.nodeName, '#text');
-    LegacyUnit.equal(rng.endContainer.parentNode.nodeName, 'I');
+    LegacyUnit.equal(rng.endContainer.parentNode?.nodeName, 'I');
     LegacyUnit.equal(rng.endOffset, 1, 'endOffset offset');
   });
 
@@ -882,12 +865,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize lean left into empty inline elements when caret is before br', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p><i><b></b></i><br /></p>';
-    rng = editor.dom.createRng();
-    rng.setStartBefore(editor.getBody().firstChild.lastChild);
-    rng.setEndBefore(editor.getBody().firstChild.lastChild);
+    rng.setStartBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
+    rng.setEndBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -898,12 +880,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize lean left from br into formatter caret container', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p><span id="_mce_caret">' + Zwsp.ZWSP + '</span><br /></p>';
-    rng = editor.dom.createRng();
-    rng.setStartBefore(editor.getBody().firstChild.lastChild);
-    rng.setEndBefore(editor.getBody().firstChild.lastChild);
+    rng.setStartBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
+    rng.setEndBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -914,12 +895,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it(`normalize doesn't lean left into empty inline elements if there is a br element after caret`, () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p><i><b></b></i><br /><br /></p>';
-    rng = editor.dom.createRng();
-    rng.setStartBefore(editor.getBody().firstChild.lastChild);
-    rng.setEndBefore(editor.getBody().firstChild.lastChild);
+    rng.setStartBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
+    rng.setEndBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -930,12 +910,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it(`normalize doesn't lean left into empty inline elements if there is a br element before caret`, () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p><i><b><br /></b></i><br /></p>';
-    rng = editor.dom.createRng();
-    rng.setStartBefore(editor.getBody().firstChild.lastChild);
-    rng.setEndBefore(editor.getBody().firstChild.lastChild);
+    rng.setStartBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
+    rng.setEndBefore(editor.getBody().firstChild?.lastChild as HTMLBRElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -946,12 +925,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it(`normalize doesn't move start/end if it's before/after table`, () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<table><tr><td>X</td></tr></table>';
-    rng = editor.dom.createRng();
-    rng.setStartBefore(editor.getBody().firstChild);
-    rng.setEndAfter(editor.getBody().lastChild);
+    rng.setStartBefore(editor.getBody().firstChild as HTMLTableElement);
+    rng.setEndAfter(editor.getBody().lastChild as HTMLTableElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -964,12 +942,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize after paragraph', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p>a</p>';
-    rng = editor.dom.createRng();
-    rng.setStartAfter(editor.getBody().firstChild);
-    rng.setEndAfter(editor.getBody().lastChild);
+    rng.setStartAfter(editor.getBody().firstChild as HTMLParagraphElement);
+    rng.setEndAfter(editor.getBody().lastChild as HTMLParagraphElement);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -982,12 +959,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize caret after trailing BR', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.getBody().innerHTML = '<p>a<br /></p>';
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 2);
-    rng.setEnd(editor.getBody().firstChild, 2);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 2);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 2);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -1000,12 +976,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize caret after bogus block BR', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p><br /></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 1);
-    rng.setEnd(editor.getBody().firstChild, 1);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 1);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 1);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -1018,18 +993,17 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize after table should not move', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
-    editor.setContent('a<table><tr><td>b</td></tr></table>');
-    rng = editor.dom.createRng();
+    editor.setContent('<p>a</p><table><tr><td>b</td></tr></table>');
     rng.setStart(editor.getBody(), 0);
-    rng.setEnd(editor.getBody(), 1);
+    rng.setEnd(editor.getBody(), 2);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
     rng = editor.selection.getRng();
     LegacyUnit.equalDom(rng.endContainer, editor.getBody());
-    LegacyUnit.equal(rng.endOffset, 1);
+    LegacyUnit.equal(rng.endOffset, 2);
   });
 
   /*
@@ -1053,12 +1027,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('normalize caret after double BR', () => {
     const editor = hook.editor();
-    let rng;
+    let rng = editor.dom.createRng();
 
     editor.setContent('<p>a<br /><br /></p>');
-    rng = editor.dom.createRng();
-    rng.setStart(editor.getBody().firstChild, 3);
-    rng.setEnd(editor.getBody().firstChild, 3);
+    rng.setStart(editor.getBody().firstChild as HTMLParagraphElement, 3);
+    rng.setEnd(editor.getBody().firstChild as HTMLParagraphElement, 3);
     editor.selection.setRng(rng);
     editor.selection.normalize();
 
@@ -1078,12 +1051,14 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     rng.setEnd(editor.getBody(), 2);
     editor.selection.setRng(rng);
 
-    LegacyUnit.equal(editor.selection.getContent(), '<custom1>test</custom1><custom2>test</custom2>');
+    // custom2 has been specified as an inline element in the editor config so expect it be wrapped in a p tag
+    LegacyUnit.equal(editor.selection.getContent(), '<custom1>test</custom1>\n<p><custom2>test</custom2></p>');
   });
 
   it('selectorChanged', () => {
     const editor = hook.editor();
-    let newState, newArgs;
+    let newState: boolean | undefined;
+    let newArgs: { node: Node; selector: String; parents: Node[] } | undefined;
 
     editor.selection.selectorChanged('a[href]', (state, args) => {
       newState = state;
@@ -1095,21 +1070,23 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.nodeChanged();
 
     assert.isTrue(newState);
-    assert.equal(newArgs.selector, 'a[href]');
-    LegacyUnit.equalDom(newArgs.node, editor.getBody().firstChild.firstChild);
-    assert.lengthOf(newArgs.parents, 2);
+    assert.equal(newArgs?.selector, 'a[href]');
+    LegacyUnit.equalDom(newArgs?.node as Node, editor.getBody().firstChild?.firstChild as HTMLAnchorElement);
+    assert.lengthOf(newArgs?.parents ?? [], 2);
 
     editor.setContent('<p>text</p>');
     LegacyUnit.setSelection(editor, 'p', 0, 'p', 4);
     editor.nodeChanged();
-    assert.equal(newArgs.selector, 'a[href]');
-    LegacyUnit.equalDom(newArgs.node, editor.getBody().firstChild);
-    assert.lengthOf(newArgs.parents, 1);
+    assert.equal(newArgs?.selector, 'a[href]');
+    LegacyUnit.equalDom(newArgs?.node as Node, editor.getBody().firstChild as HTMLParagraphElement);
+    assert.lengthOf(newArgs?.parents ?? [], 1);
   });
 
   it('selectorChangedWithUnbind', () => {
     const editor = hook.editor();
-    let newState, newArgs, calls = 0;
+    let newState: boolean | undefined;
+    let newArgs: { node: Node; selector: String; parents: Node[] } | undefined;
+    let calls = 0;
 
     const { unbind } = editor.selection.selectorChangedWithUnbind('a[href]', (state, args) => {
       newState = state;
@@ -1122,9 +1099,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.nodeChanged();
 
     assert.isTrue(newState);
-    assert.equal(newArgs.selector, 'a[href]');
-    LegacyUnit.equalDom(newArgs.node, editor.getBody().firstChild.firstChild);
-    assert.lengthOf(newArgs.parents, 2);
+    assert.equal(newArgs?.selector, 'a[href]');
+    LegacyUnit.equalDom(newArgs?.node as Node, editor.getBody().firstChild?.firstChild as HTMLAnchorElement);
+    assert.lengthOf(newArgs?.parents ?? [], 2);
     assert.equal(calls, 1, 'selectorChangedWithUnbind callback is only called once');
 
     unbind();
@@ -1138,7 +1115,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('TINY-3463: selectorChanged should setup the active state if already selected', () => {
     const editor = hook.editor();
-    let newState, newArgs;
+    let newState: boolean | undefined;
+    let newArgs: { node: Node; selector: String; parents: Node[] } | undefined;
 
     editor.setContent('<p>some <a href="#">text</a></p>');
     LegacyUnit.setSelection(editor, 'a', 0, 'a', 4);
@@ -1152,8 +1130,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.nodeChanged();
 
     assert.isFalse(newState);
-    assert.equal(newArgs.selector, 'a[href]');
-    assert.lengthOf(newArgs.parents, 1);
+    assert.equal(newArgs?.selector, 'a[href]');
+    assert.lengthOf(newArgs?.parents ?? [], 1);
   });
 
   it('setRng', () => {
@@ -1161,11 +1139,11 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     let rng = editor.dom.createRng();
 
     editor.setContent('<p>x</p>');
-    rng.setStart(editor.dom.select('p')[0].firstChild, 0);
-    rng.setEnd(editor.dom.select('p')[0].firstChild, 1);
+    rng.setStart(editor.dom.select('p')[0].firstChild as Text, 0);
+    rng.setEnd(editor.dom.select('p')[0].firstChild as Text, 1);
 
     editor.selection.setRng(rng);
-    editor.selection.setRng(null);
+    editor.selection.setRng(null as any);
 
     rng = editor.selection.getRng();
     LegacyUnit.equal(rng.startContainer.nodeName, '#text');
@@ -1180,8 +1158,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
     editor.setContent('<p>x</p>');
 
-    rng.setStart(editor.dom.select('p')[0].firstChild, 0);
-    rng.setEnd(editor.dom.select('p')[0].firstChild, 1);
+    rng.setStart(editor.dom.select('p')[0].firstChild as Text, 0);
+    rng.setEnd(editor.dom.select('p')[0].firstChild as Text, 1);
     editor.selection.setRng(rng);
 
     const tmpNode = document.createTextNode('y');
@@ -1200,8 +1178,9 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 
   it('setRng invalid range removed parent context', () => {
     const editor = hook.editor();
+
     editor.setContent('<p><strong><em>x</em></strong></p>');
-    const textNode = editor.dom.select('em')[0].firstChild;
+    const textNode = editor.dom.select('em')[0].firstChild as Text;
 
     editor.setContent('');
 
@@ -1211,11 +1190,39 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     editor.selection.setRng(rng);
 
     const curRng = editor.selection.getRng();
-    LegacyUnit.equal(curRng.startContainer.nodeName, 'BODY');
+    LegacyUnit.equal(curRng.startContainer.nodeName, 'P');
     LegacyUnit.equal(curRng.startOffset, 0);
-    LegacyUnit.equal(curRng.endContainer.nodeName, 'BODY');
+    LegacyUnit.equal(curRng.endContainer.nodeName, 'P');
     LegacyUnit.equal(curRng.endOffset, 0);
   });
+
+  it('TINY-9001: Expanding a word expands the selection', () => {
+    const editor = hook.editor();
+    editor.setContent('A BCDE F');
+    TinySelections.setCursor(editor, [ 0, 0 ], 4);
+    editor.selection.expand();
+    TinyAssertions.assertSelection(editor, [ 0, 0 ], 2, [ 0, 0 ], 6);
+  });
+
+  it('TINY-9001: Expanding a word expands the selection, with a provided option', () => {
+    const editor = hook.editor();
+    editor.setContent('A BCDE F');
+    TinySelections.setCursor(editor, [ 0, 0 ], 4);
+    editor.selection.expand({ type: 'word' });
+    TinyAssertions.assertSelection(editor, [ 0, 0 ], 2, [ 0, 0 ], 6);
+  });
+
+  it('TINY-9259: Should be able to get selection range on hidden editors', () => {
+    const editor = hook.editor();
+
+    editor.focus();
+    editor.setContent('<p>ab</p>');
+    TinySelections.setCursor(editor, [ 0, 0 ], 1);
+    editor.getContainer().style.display = 'none';
+    TinyAssertions.assertCursor(editor, [ 0, 0 ], 1);
+    editor.getContainer().style.display = '';
+  });
+
   /*
   // TODO: Re-implement this test as a separate test if needed by destroying an editor etc
   it('getRng should return null if win.document is not defined or null', () => {
@@ -1244,7 +1251,7 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
 */
   it('image selection webkit bug', () => {
     const editor = hook.editor();
-    const testImageSelection = (inputHtml, expectedContainerName, expectedOffset) => {
+    const testImageSelection = (inputHtml: string, expectedContainerName: string, expectedOffset: number) => {
       editor.setContent(inputHtml);
       editor.selection.select(editor.dom.select('img')[0]);
 
@@ -1257,7 +1264,8 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
       LegacyUnit.equal(editor.selection.getStart().nodeName, 'IMG');
       LegacyUnit.equal(editor.selection.getEnd().nodeName, 'IMG');
 
-      const nativeRng = editor.selection.getSel().getRangeAt(0);
+      const nativeSel = editor.selection.getSel() as Selection;
+      const nativeRng = nativeSel.getRangeAt(0);
       LegacyUnit.equal(nativeRng.startContainer.nodeName, 'P');
       LegacyUnit.equal(nativeRng.startOffset, expectedOffset);
       LegacyUnit.equal(nativeRng.startContainer.nodeName, 'P');
@@ -1284,5 +1292,89 @@ describe('browser.tinymce.core.dom.SelectionTest', () => {
     testImageSelection('<p dir="rtl"><img style="float: left;" src="#">abc</p>', 'P', 0);
     testImageSelection('<p dir="rtl">abc<img style="float: left;" src="#"></p>', 'P', 1);
     testImageSelection('<p dir="rtl">abc<img style="float: left;" src="#">def</p>', 'P', 1);
+  });
+
+  context('isEditable', () => {
+    const testIsEditableSelection = (testCase: { input: string; editableRoot?: boolean; spath: number[]; soffset: number; fpath: number[]; foffset: number; expected: boolean }) => () => {
+      const editor = hook.editor();
+      const editable = testCase.editableRoot ?? true;
+
+      editor.getBody().contentEditable = editable ? 'true' : 'false';
+      editor.setContent(testCase.input);
+      TinySelections.setSelection(editor, testCase.spath, testCase.soffset, testCase.fpath, testCase.foffset);
+      assert.equal(editor.selection.isEditable(), testCase.expected);
+      editor.getBody().contentEditable = 'true';
+    };
+
+    const testIsEditableCaret = (testCase: { input: string; editableRoot?: boolean; path: number[]; offset: number; expected: boolean }) => testIsEditableSelection({
+      input: testCase.input,
+      editableRoot: testCase.editableRoot,
+      spath: testCase.path,
+      soffset: testCase.offset,
+      fpath: testCase.path,
+      foffset: testCase.offset,
+      expected: testCase.expected
+    });
+
+    it('TINY-9462: isEditable on paragraph in editable root', testIsEditableCaret({
+      input: '<p>abc</p>',
+      path: [ 0, 0 ],
+      offset: 0,
+      expected: true
+    }));
+
+    it('TINY-9462: isEditable on paragraph in noneditable root', testIsEditableCaret({
+      input: '<p>abc</p>',
+      editableRoot: false,
+      path: [ 0, 0 ],
+      offset: 0,
+      expected: false
+    }));
+
+    it('TINY-9462: isEditable on expanded range in editable root', testIsEditableSelection({
+      input: '<p>ab</p><p>cd</p>',
+      spath: [ 0, 0 ],
+      soffset: 1,
+      fpath: [ 1, 0 ],
+      foffset: 1,
+      expected: true
+    }));
+
+    it('TINY-9462: isEditable on expanded range in noneditable root', testIsEditableSelection({
+      input: '<p>ab</p><p>cd</p>',
+      editableRoot: false,
+      spath: [ 0, 0 ],
+      soffset: 1,
+      fpath: [ 1, 0 ],
+      foffset: 1,
+      expected: false
+    }));
+
+    it('TINY-9462: isEditable on expanded range where start is noneditable', testIsEditableSelection({
+      input: '<p contenteditable="false">ab</p><p>cd</p>',
+      spath: [ 1, 0 ], // Shifted by one due to fake caret before P
+      soffset: 1,
+      fpath: [ 2, 0 ], // Shifted by one due to fake caret before P
+      foffset: 1,
+      expected: false
+    }));
+
+    it('TINY-9462: isEditable on expanded range where end is noneditable', testIsEditableSelection({
+      input: '<p>ab</p><p contenteditable="false">cd</p>',
+      spath: [ 0, 0 ],
+      soffset: 1,
+      fpath: [ 1, 0 ],
+      foffset: 1,
+      expected: false
+    }));
+
+    it('TINY-9477: isEditable on selected noneditable table cells should be true since parent is editable', testIsEditableSelection({
+      input: '<table><tbody><tr><td contenteditable="false" data-mce-selected="1">a</td><td contenteditable="false" data-mce-selected="1">b</td></tr></tbody></table>',
+      spath: [ 0, 0, 0, 0, 0 ],
+      soffset: 0,
+      fpath: [ 0, 0, 0, 1, 0 ],
+      foffset: 1,
+      expected: true
+    }));
   });
 });

@@ -10,10 +10,10 @@ import * as WindowManager from 'tinymce/themes/silver/ui/dialog/WindowManager';
 import * as TestExtras from '../../module/TestExtras';
 
 describe('headless.tinymce.themes.silver.window.WindowManagerAlertTest', () => {
-  const helpers = TestExtras.bddSetup();
+  const extrasHook = TestExtras.bddSetup();
   let windowManager: WindowManagerImpl;
   before(() => {
-    windowManager = WindowManager.setup(helpers.extras());
+    windowManager = WindowManager.setup(extrasHook.access().extras);
   });
 
   const pTeardown = async () => {
@@ -36,7 +36,7 @@ describe('headless.tinymce.themes.silver.window.WindowManagerAlertTest', () => {
   it('Check the basic structure of the alert dialog', async () => {
     createAlert('The alert dialog loads with the basic structure', Fun.noop);
     await pWaitForDialog();
-    const sink = helpers.sink();
+    const sink = extrasHook.access().getDialogSink();
     Assertions.assertStructure('A basic alert dialog should have these components',
       ApproxStructure.build((s, str, arr) => s.element('div', {
         classes: [ arr.has('mce-silver-sink') ],
@@ -183,5 +183,42 @@ describe('headless.tinymce.themes.silver.window.WindowManagerAlertTest', () => {
     createAlert('Showing an alert', Fun.noop);
     Mouse.clickOn(SugarBody.body(), '.tox-button:contains("OK")');
     UiFinder.notExists(SugarBody.body(), '[role="dialog"]');
+  });
+
+  it('TINY-3548: sanitize message', async () => {
+    createAlert('<a href="javascript:alert(1)">invalid link</a><script>alert(1)</script><a href="http://tiny.cloud">valid link</a>', Fun.noop);
+    const dialogBody = SelectorFind.descendant(SugarDocument.getDocument(), '.tox-dialog__body').getOrDie('Cannot find dialog body element');
+    Assertions.assertStructure('A basic alert dialog should have these components',
+      ApproxStructure.build((s, str, arr) => s.element('div', {
+        classes: [ arr.has('tox-dialog__body') ],
+        children: [
+          s.element('div', {
+            classes: [ arr.has('tox-dialog__body-content') ],
+            children: [
+              s.element('p', {
+                children: [
+                  s.element('a', {
+                    exactAttrs: { },
+                    children: [
+                      s.text(str.is('invalid link'))
+                    ]
+                  }),
+                  s.element('a', {
+                    exactAttrs: {
+                      href: str.is('http://tiny.cloud')
+                    },
+                    children: [
+                      s.text(str.is('valid link'))
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })),
+      dialogBody
+    );
+    await pTeardown();
   });
 });

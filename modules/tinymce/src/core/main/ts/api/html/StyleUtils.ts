@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Obj, Strings } from '@ephox/katamari';
 
 import DOMUtils from '../dom/DOMUtils';
@@ -33,18 +26,18 @@ const nonInheritableStyles: Set<string> = new Set();
 // Does not include non-inherited shorthand style properties
 const shorthandStyleProps = [ 'font', 'text-decoration', 'text-emphasis' ];
 
-const getStyleProps = (dom: DOMUtils, node: Node) =>
+const getStyleProps = (dom: DOMUtils, node: Element) =>
   Obj.keys(dom.parseStyle(dom.getAttrib(node, 'style')));
 
 const isNonInheritableStyle = (style: string) => nonInheritableStyles.has(style);
 
-const hasInheritableStyles = (dom: DOMUtils, node: Node): boolean =>
+const hasInheritableStyles = (dom: DOMUtils, node: Element): boolean =>
   Arr.forall(getStyleProps(dom, node), (style) => !isNonInheritableStyle(style));
 
 const getLonghandStyleProps = (styles: string[]): string[] =>
   Arr.filter(styles, (style) => Arr.exists(shorthandStyleProps, (prop) => Strings.startsWith(style, prop)));
 
-const hasStyleConflict = (dom: DOMUtils, node: Node, parentNode: Node): boolean => {
+const hasStyleConflict = (dom: DOMUtils, node: Element, parentNode: Element): boolean => {
   const nodeStyleProps = getStyleProps(dom, node);
   const parentNodeStyleProps = getStyleProps(dom, parentNode);
 

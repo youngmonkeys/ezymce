@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import {
   AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloySpec, AlloyTriggers, Behaviour, Composing, CustomEvent, Disabling, Focusing, FormField, Input,
   Invalidating, Layout, Memento, Representing, SimpleSpec, Tabstopping
@@ -17,8 +10,8 @@ import { UiFactoryBackstageShared } from '../../backstage/Backstage';
 import { UiFactoryBackstageForColorInput } from '../../backstage/ColorInputBackstage';
 import * as ReadOnly from '../../ReadOnly';
 import { renderLabel } from '../alien/FieldLabeller';
+import * as ColorCache from '../core/color/ColorCache';
 import * as ColorSwatch from '../core/color/ColorSwatch';
-import * as Options from '../core/color/Options';
 import { formChangeEvent } from '../general/FormEvents';
 import { renderPanelButton } from '../general/PanelButton';
 
@@ -40,12 +33,18 @@ interface ColorPickerCancelEvent extends CustomEvent {
 
 type ColorInputSpec = Omit<Dialog.ColorInput, 'type'>;
 
-export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactoryBackstageShared, colorInputBackstage: UiFactoryBackstageForColorInput): SimpleSpec => {
+export const renderColorInput = (
+  spec: ColorInputSpec,
+  sharedBackstage: UiFactoryBackstageShared,
+  colorInputBackstage: UiFactoryBackstageForColorInput,
+  initialData: Optional<string>
+): SimpleSpec => {
   const pField = FormField.parts.field({
     factory: Input,
     inputClasses: [ 'tox-textfield' ],
+    data: initialData,
 
-    onSetValue: (c) => Invalidating.run(c).get(Fun.noop),
+    onSetValue: (c: AlloyComponent) => Invalidating.run(c).get(Fun.noop),
 
     inputBehaviours: Behaviour.derive([
       Disabling.config({
@@ -94,7 +93,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
 
   const pLabel: Optional<AlloySpec> = spec.label.map((label) => renderLabel(label, sharedBackstage.providers));
 
-  const emitSwatchChange = (colorBit, value) => {
+  const emitSwatchChange = (colorBit: AlloyComponent, value: string) => {
     AlloyTriggers.emitWith(colorBit, colorSwatchChangeEvent, {
       value
     });
@@ -108,7 +107,7 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
             () => AlloyTriggers.emit(colorBit, colorPickerCancelEvent),
             (value) => {
               emitSwatchChange(colorBit, value);
-              Options.addColor(value);
+              ColorCache.addColor(spec.storageKey, value);
             }
           );
         }, '#ffffff');
@@ -133,8 +132,8 @@ export const renderColorInput = (spec: ColorInputSpec, sharedBackstage: UiFactor
         onLtr: () => [ Layout.southeast, Layout.southwest, Layout.south ]
       },
       components: [],
-      fetch: ColorSwatch.getFetch(colorInputBackstage.getColors(), colorInputBackstage.hasCustomColors()),
-      columns: colorInputBackstage.getColorCols(),
+      fetch: ColorSwatch.getFetch(colorInputBackstage.getColors(spec.storageKey), spec.storageKey, colorInputBackstage.hasCustomColors()),
+      columns: colorInputBackstage.getColorCols(spec.storageKey),
       presets: 'color',
       onItemAction
     }, sharedBackstage)

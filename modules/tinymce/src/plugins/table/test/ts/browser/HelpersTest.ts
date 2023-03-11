@@ -24,7 +24,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
       '<td width="20" height="30" scope="row" class="foo" ' +
       'style="background-color: #333333; text-align:left; ' +
       'vertical-align:middle; border-style: dashed; ' +
-      'border-color: #d91111">a</td>' +
+      'border-color: #D91111">a</td>' +
       '</tr></tbody>' +
       '</table>'
     );
@@ -39,7 +39,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     assert.equal(cellData.height, '30', 'Extracts height');
 
     assert.equal(cellData.backgroundcolor, '#333333', 'Extracts background-color');
-    assert.equal(cellData.bordercolor, '#d91111', 'Extracts border-color');
+    assert.equal(cellData.bordercolor, '#D91111', 'Extracts border-color');
     assert.equal(cellData.borderstyle, 'dashed', 'Extracts border-style');
   });
 
@@ -52,7 +52,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
       '</colgroup>' +
       '<tbody>' +
       '<tr>' +
-      '<td height="30" scope="row" class="foo" style="background-color: #333333; text-align:left; vertical-align:middle; border-style: dashed; border-color: #d91111">a</td>' +
+      '<td height="30" scope="row" class="foo" style="background-color: #333333; text-align:left; vertical-align:middle; border-style: dashed; border-color: #D91111">a</td>' +
       '</tr>' +
       '</tbody>' +
       '</table>'
@@ -68,7 +68,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     assert.equal(cellData.height, '30', 'Extracts height');
 
     assert.equal(cellData.backgroundcolor, '#333333', 'Extracts background-color');
-    assert.equal(cellData.bordercolor, '#d91111', 'Extracts border-color');
+    assert.equal(cellData.bordercolor, '#D91111', 'Extracts border-color');
     assert.equal(cellData.borderstyle, 'dashed', 'Extracts border-style');
   });
 
@@ -88,7 +88,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     assert.equal(cellData.width, '20px', 'Extracts width from style');
     assert.equal(cellData.height, '30px', 'Extracts height from style');
     assert.equal(cellData.backgroundcolor, '#333333', 'Extracts background-color from rgb');
-    assert.equal(cellData.bordercolor, '#d91111', 'Extracts border-color from rgb');
+    assert.equal(cellData.bordercolor, '#D91111', 'Extracts border-color from rgb');
   });
 
   it('TBA: extractDataFromCellElement 2 with colgroup', () => {
@@ -110,7 +110,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     assert.equal(cellData.width, '20px', 'Extracts width from style');
     assert.equal(cellData.height, '30px', 'Extracts height from style');
     assert.equal(cellData.backgroundcolor, '#333333', 'Extracts background-color from rgb');
-    assert.equal(cellData.bordercolor, '#d91111', 'Extracts border-color from rgb');
+    assert.equal(cellData.bordercolor, '#D91111', 'Extracts border-color from rgb');
   });
 
   it('TBA: extractDataFromCellElement 3', () => {
@@ -165,7 +165,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     assert.equal(rowData.align, 'left', 'Extracts align');
     assert.equal(rowData.type, 'body', 'Extracts type');
     assert.equal(rowData.borderstyle, 'dashed', 'Extracts border-style');
-    assert.equal(rowData.bordercolor, '#d91111', 'Extracts border-color');
+    assert.equal(rowData.bordercolor, '#D91111', 'Extracts border-color');
     assert.equal(rowData.backgroundcolor, '#333333', 'Extracts background-color');
   });
 
@@ -211,7 +211,6 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
 
   it('TBA: extractDataFromTableElement 3 - border width from border-width style', () => {
     const editor = hook.editor();
-    editor.options.set('table_style_by_css', true);
     editor.setContent(
       '<table class="foo" style="border-width: 5px" border="1"><tbody><tr><td>a</td></tr></tbody></table>'
     );
@@ -222,7 +221,6 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
 
   it('TBA: extractDataFromTableElement 4 - border width from border style', () => {
     const editor = hook.editor();
-    editor.options.set('table_style_by_css', true);
     editor.setContent(
       '<table class="foo" style="border: 5px solid red" border="1"><tbody><tr><td>a</td></tr></tbody></table>'
     );
@@ -240,6 +238,7 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     const table = UiFinder.findIn(TinyDom.body(editor), 'table.foo').getOrDie();
     const tableData = Helpers.extractDataFromTableElement(editor, table.dom, true);
     assert.equal(tableData.border, '5', 'Extracts border');
+    editor.options.unset('table_style_by_css');
   });
 
   it('TBA: extractDataFromTableElement 6 - border width from children', () => {
@@ -251,11 +250,11 @@ describe('browser.tinymce.plugins.table.HelpersTest', () => {
     const table = UiFinder.findIn(TinyDom.body(editor), 'table.foo').getOrDie();
     const tableData = Helpers.extractDataFromTableElement(editor, table.dom, true);
     assert.equal(tableData.border, '5px', 'Extracts border-width');
+    editor.options.unset('table_style_by_css');
   });
 
   it('TBA: extractDataFromTableElement 7 - border width, style and color from collapsed style', () => {
     const editor = hook.editor();
-    editor.options.set('table_style_by_css', true);
     editor.setContent(
       '<table class="foo" style="border: 5px double red" border="1"><tbody><tr><td>a</td></tr></tbody></table>'
     );

@@ -1,5 +1,5 @@
 import { Assertions, Mouse, UiFinder } from '@ephox/agar';
-import { Obj, Type } from '@ephox/katamari';
+import { Obj, Optional, Type } from '@ephox/katamari';
 import { Attribute, Checked, Class, Focus, SugarBody, SugarElement, Traverse, Value } from '@ephox/sugar';
 import { assert } from 'chai';
 
@@ -20,7 +20,6 @@ export interface ImageDialogData {
   class: string;
   border: string;
   hspace: string;
-  style: string;
   vspace: string;
   borderstyle: string;
 }
@@ -39,7 +38,6 @@ export const generalTabSelectors = {
 
 export const advancedTabSelectors = {
   border: 'label.tox-label:contains("Border width") + input.tox-textfield',
-  style: 'label.tox-label:contains("Style") + input.tox-textfield',
   hspace: 'label.tox-label:contains("Horizontal space") + input.tox-textfield',
   vspace: 'label.tox-label:contains("Vertical space") + input.tox-textfield',
   borderstyle: 'label.tox-label:contains("Border style") + div.tox-listboxfield > .tox-listbox'
@@ -67,14 +65,13 @@ const setFieldValue = (selector: string, value: string | boolean): SugarElement<
 };
 
 const setTabFieldValues = (data: Partial<ImageDialogData>, tabSelectors: Record<string, string>): void => {
-  Obj.each(tabSelectors, (value, key: keyof Omit<ImageDialogData, 'dimensions'>) => {
-    if (Obj.has(data, key)) {
-      const obj = data[key];
-      const newValue = isObjWithValue(obj) ? obj.value : obj;
-      setFieldValue(tabSelectors[key], newValue);
-    } else if (Obj.has(data, 'dimensions') && Obj.has(data.dimensions as Record<string, string>, key)) {
-      setFieldValue(tabSelectors[key], data.dimensions[key]);
-    }
+  Obj.each(tabSelectors, (value, key) => {
+    Obj.get(data, key as keyof Omit<ImageDialogData, 'dimensions'>)
+      .orThunk(() => Obj.has(data, 'dimensions') ? Obj.get(data.dimensions as Record<string, string>, key) : Optional.none())
+      .each((obj) => {
+        const newValue = isObjWithValue(obj) ? obj.value : obj;
+        setFieldValue(tabSelectors[key], newValue);
+      });
   });
 };
 

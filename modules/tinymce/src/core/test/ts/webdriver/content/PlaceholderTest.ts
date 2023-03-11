@@ -13,7 +13,7 @@ describe('webdriver.tinymce.core.content.PlaceholderTest', () => {
     base_url: '/project/tinymce/js/tinymce',
     toolbar: 'undo redo | bold',
     placeholder,
-    setup: (editor) => {
+    setup: (editor: Editor) => {
       editor.on('PlaceholderToggle', () => {
         togglePlaceholderCount.set(togglePlaceholderCount.get() + 1);
       });
@@ -127,7 +127,7 @@ describe('webdriver.tinymce.core.content.PlaceholderTest', () => {
     setContent(editor, '<p></p>');
     await pAssertPlaceholderExists(editor);
     // Note: This fakes a paste event
-    editor.fire('paste');
+    editor.dispatch('paste');
     editor.getBody().innerHTML = '<p>Pasted content</p>';
     await pAssertPlaceholderNotExists(editor);
     assertCount(1);

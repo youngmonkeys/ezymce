@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional } from '@ephox/katamari';
 import { Awareness, CursorPosition, Insert, Remove, SelectorFind, SugarElement, Traverse } from '@ephox/sugar';
 
@@ -31,11 +24,18 @@ const create = (editor: Editor, range: Range): void => {
   }
 };
 
-const detect = (elm: SugarElement<Node>): Optional<SugarElement<Element>> => SelectorFind.closest(elm, autocompleteSelector);
+const detect = (elm: SugarElement<Node>): Optional<SugarElement<Element>> =>
+  SelectorFind.closest(elm, autocompleteSelector);
 
-const findIn = (elm: SugarElement<Element>): Optional<SugarElement> => SelectorFind.descendant(elm, autocompleteSelector);
+const findIn = (elm: SugarElement<Element>): Optional<SugarElement<Element>> =>
+  SelectorFind.descendant(elm, autocompleteSelector);
 
-const remove = (elm: SugarElement<Element>): void => findIn(elm).each(Remove.unwrap);
+const remove = (editor: Editor, elm: SugarElement<Element>): void =>
+  findIn(elm).each((wrapper) => {
+    const bookmark = editor.selection.getBookmark();
+    Remove.unwrap(wrapper);
+    editor.selection.moveToBookmark(bookmark);
+  });
 
 export {
   create,

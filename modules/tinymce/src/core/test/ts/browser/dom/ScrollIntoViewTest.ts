@@ -92,7 +92,7 @@ describe('browser.tinymce.core.dom.ScrollIntoViewTest', () => {
   const assertScrollIntoViewEventInfo = (editor: Editor, value: StateAndHandler, expectedElementSelector: string, expectedAlignToTop: boolean) => {
     const state = value.state.get();
     const expectedTarget = SugarElement.fromDom(editor.dom.select(expectedElementSelector)[0]);
-    const actualTarget = SugarElement.fromDom(state.elm);
+    const actualTarget = SugarElement.fromDom(state.elm as HTMLElement);
     Assertions.assertDomEq('Target should be expected element', expectedTarget, actualTarget);
     assert.equal(state.alignToTop, expectedAlignToTop, 'Align to top should be expected value');
     editor.off('ScrollIntoView', value.handler);
@@ -107,7 +107,7 @@ describe('browser.tinymce.core.dom.ScrollIntoViewTest', () => {
       const editor = hook.editor();
       await pSetContent(editor, '<div style="height: 1000px">a</div><div style="height: 50px">b</div><div style="height: 1000px">a</div>');
       scrollIntoView(editor, 'div:nth-child(2)', false);
-      assertScrollPosition(editor, 0, 648);
+      assertScrollPosition(editor, 0, 667);
     });
 
     it('Scroll to element align to top', async () => {
@@ -137,7 +137,7 @@ describe('browser.tinymce.core.dom.ScrollIntoViewTest', () => {
       await pSetContent(editor, '<div style="height: 1000px">a</div><div style="height: 50px">b</div><div style="height: 600px">a</div>');
       TinySelections.setCursor(editor, [ 2, 0 ], 0);
       editor.selection.scrollIntoView();
-      assertScrollPosition(editor, 0, 670);
+      assertScrollPosition(editor, 0, 689);
     });
   });
 
@@ -146,7 +146,7 @@ describe('browser.tinymce.core.dom.ScrollIntoViewTest', () => {
       const editor = hook.editor();
       await pSetContent(editor, '<div style="height: 1000px">a</div><div style="height: 50px">b</div><div style="height: 1000px">a</div>');
       scrollElementIntoView(editor, 'div:nth-child(2)', false);
-      assertScrollPosition(editor, 0, 648);
+      assertScrollPosition(editor, 0, 667);
     });
 
     it('Scroll to element align to top', async () => {
@@ -163,11 +163,11 @@ describe('browser.tinymce.core.dom.ScrollIntoViewTest', () => {
       const editor = hook.editor();
       await pSetContent(editor, '<div style="height: 1000px">a</div><div style="height: 50px">b</div><div style="height: 1000px">a</div>');
       scrollRangeIntoView(editor, [ 1, 0 ], 0);
-      assertApproxScrollPosition(editor, 0, 618); // Height of the text content/cursor
+      assertApproxScrollPosition(editor, 0, 640); // Height of the text content/cursor
       scrollRangeIntoView(editor, [ 0, 0 ], 0);
       assertApproxScrollPosition(editor, 0, 0);
       scrollRangeIntoView(editor, [ 2, 0 ], 0);
-      assertApproxScrollPosition(editor, 0, 668);
+      assertApproxScrollPosition(editor, 0, 689);
     });
   });
 

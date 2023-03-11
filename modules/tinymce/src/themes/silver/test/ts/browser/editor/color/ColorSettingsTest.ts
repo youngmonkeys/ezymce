@@ -8,7 +8,7 @@ import LocalStorage from 'tinymce/core/api/util/LocalStorage';
 import * as Options from 'tinymce/themes/silver/ui/core/color/Options';
 
 interface ExpectedColor {
-  readonly type: string;
+  readonly type: 'choiceitem';
   readonly text: string;
   readonly value: string;
   readonly delta?: number;
@@ -34,11 +34,11 @@ describe('browser.tinymce.themes.silver.editor.color.ColorSettingsTest', () => {
   };
 
   const assertColors = (input: string[], expected: ExpectedColor[]) => {
-    const extractColor = (color: string) => {
-      const m = /^#([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/.exec(color);
+    const extractColor = (color: string | undefined) => {
+      const m = /^#([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/.exec(color ?? '') ?? [];
       return [ parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16) ];
     };
-    const assertColor = (expectedColor: string, actualColor: string, delta: number = 0) => {
+    const assertColor = (expectedColor: string, actualColor: string | undefined, delta: number = 0) => {
       const expectedRgb = extractColor(expectedColor);
       const actualRgb = extractColor(actualColor);
       assert.isTrue((
@@ -58,8 +58,8 @@ describe('browser.tinymce.themes.silver.editor.color.ColorSettingsTest', () => {
     });
   };
 
-  const assertCols = (editor: Editor, expected: number) => {
-    const colors = Options.getColorCols(editor);
+  const assertCols = (editor: Editor, id: string, expected: number) => {
+    const colors = Options.getColorCols(editor, id);
     assert.equal(colors, expected, 'Color cols should be the same');
   };
 
@@ -68,7 +68,7 @@ describe('browser.tinymce.themes.silver.editor.color.ColorSettingsTest', () => {
     assert.equal(sqrt, expected, 'Calced cols should be the same');
   };
 
-  const mappedColors = [
+  const mappedColors: ExpectedColor[] = [
     {
       text: 'Black',
       value: '#1ABC9C',
@@ -113,7 +113,9 @@ describe('browser.tinymce.themes.silver.editor.color.ColorSettingsTest', () => {
   it('TBA: getCurrentColor should return the first found forecolor, not the parent color', () => {
     const editor = hook.editor();
     assertColors(colorSettings, mappedColors);
-    assertCols(editor, 5);
+    assertCols(editor, 'default', 5);
+    assertCols(editor, 'forecolor', 5);
+    assertCols(editor, 'hilitecolor', 5);
   });
 
   it('TBA: calcCols', () => {

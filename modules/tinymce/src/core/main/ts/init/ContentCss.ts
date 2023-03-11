@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
 
 import Editor from '../api/Editor';
@@ -24,10 +17,9 @@ const transformToUrls = (editor: Editor, cssLinks: string[]): string[] => {
   const skinUrl = editor.editorManager.baseURL + '/skins/content';
   const suffix = editor.editorManager.suffix;
   const contentCssFile = `content${suffix}.css`;
-  const inline = editor.inline === true;
 
   return Arr.map(cssLinks, (url) => {
-    if (isContentCssSkinName(url) && !inline) {
+    if (isContentCssSkinName(url) && !editor.inline) {
       return `${skinUrl}/${url}/${contentCssFile}`;
     } else {
       return editor.documentBaseURI.toAbsolute(url);
@@ -35,7 +27,7 @@ const transformToUrls = (editor: Editor, cssLinks: string[]): string[] => {
   });
 };
 
-const appendContentCssFromSettings = (editor: Editor) => {
+const appendContentCssFromSettings = (editor: Editor): void => {
   editor.contentCSS = editor.contentCSS.concat(getContentCssUrls(editor), getFontCssUrls(editor));
 };
 

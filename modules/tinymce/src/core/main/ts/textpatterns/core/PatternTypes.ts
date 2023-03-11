@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { PathRange } from '../utils/PathRange';
 
 export interface RawPattern {
@@ -58,9 +51,21 @@ export type BlockPattern = BlockFormatPattern | BlockCmdPattern;
 
 export type Pattern = InlinePattern | BlockPattern;
 
+export interface DynamicPatternContext {
+  readonly text: string; // the string from the start of the block to the cursor
+  readonly block: Element; // the parent block element
+}
+
+export type DynamicPatternsLookup = (ctx: DynamicPatternContext) => Pattern[];
+export type RawDynamicPatternsLookup = (ctx: DynamicPatternContext) => RawPattern[];
+
+// NOTE: A PatternSet should be looked up from the Options *each* time that text_patterns are
+// processed, so that text_patterns respond to changes in options. This is required for some
+// complex integrations and plugins.
 export interface PatternSet {
   readonly inlinePatterns: InlinePattern[];
   readonly blockPatterns: BlockPattern[];
+  readonly dynamicPatternsLookup: DynamicPatternsLookup;
 }
 
 interface PatternMatch<T extends Pattern> {

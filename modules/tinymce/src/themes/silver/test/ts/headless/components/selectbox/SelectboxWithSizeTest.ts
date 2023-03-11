@@ -15,7 +15,7 @@ describe('headless.tinymce.themes.silver.components.selectbox.SelectboxWithSizeT
       name: 'selector',
       size: 5,
       label: Optional.some('selector'),
-      disabled: false,
+      enabled: true,
       items: [
         { value: 'one', text: 'One' },
         { value: 'two', text: 'Two' },
@@ -23,7 +23,7 @@ describe('headless.tinymce.themes.silver.components.selectbox.SelectboxWithSizeT
         { value: 'four', text: 'Four' },
         { value: 'five', text: 'Five' }
       ]
-    }, TestProviders)
+    }, TestProviders, Optional.none())
   ));
 
   it('Check basic structure', () => {

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Cell, Fun, Optional, Singleton, Throttler } from '@ephox/katamari';
 import { Css, DomEvent, EventUnbinder, SugarElement, SugarShadowDom, Traverse, WindowVisualViewport } from '@ephox/sugar';
 
@@ -105,10 +98,10 @@ const toggleFullscreen = (editor: Editor, fullscreenState: Cell<ScrollInfo | nul
 
   const editorContainerStyle = editorContainer.style;
 
-  const iframe = editor.iframeElement;
-  const iframeStyle = iframe.style;
+  const iframe = editor.iframeElement as HTMLIFrameElement;
+  const iframeStyle = iframe?.style;
 
-  const handleClasses = (handler: (elm: string | Node | Node[], cls: string) => void) => {
+  const handleClasses = (handler: (elm: string | Element | Element[], cls: string) => void) => {
     handler(body, 'tox-fullscreen');
     handler(documentElement, 'tox-fullscreen');
     handler(editorContainer, 'tox-fullscreen');
@@ -183,11 +176,11 @@ const toggleFullscreen = (editor: Editor, fullscreenState: Cell<ScrollInfo | nul
     editorContainerStyle.top = fullscreenInfo.containerTop;
     editorContainerStyle.left = fullscreenInfo.containerLeft;
 
+    cleanup();
     setScrollPos(fullscreenInfo.scrollPos);
 
     fullscreenState.set(null);
     Events.fireFullscreenStateChanged(editor, false);
-    cleanup();
     editor.off('remove', cleanup);
   }
 };

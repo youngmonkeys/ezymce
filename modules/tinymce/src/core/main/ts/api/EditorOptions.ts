@@ -1,11 +1,4 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr, Obj, Strings, Type } from '@ephox/katamari';
+import { Fun, Obj, Strings, Type } from '@ephox/katamari';
 
 import Editor from './Editor';
 import { EditorOptions, NormalizedEditorOptions } from './OptionTypes';
@@ -59,9 +52,37 @@ export interface OptionSpec<T, U> extends BaseOptionSpec {
 }
 
 /**
- * TinyMCE Options API.
+ * TinyMCE Editor Options API. The options API provides the ability to register, lookup and set editor options.
  *
- * @class tinymce.editor.Options
+ * @summary All options need to be registered before they can be used in the editor. This is done by using the `register()` API which requires a name
+ * and an option specification. The specification should contain a `processor` and an optional `default` value. The processor is used to parse
+ * and validate the option value either passed in the initial configuration or via the `set()` API.
+ * <br><br>
+ * The processor can either be a custom function that returns if the option value is valid, or one of the following built-in processors:
+ * <br><br>
+ * - `string`<br>
+ * - `number`<br>
+ * - `boolean`<br>
+ * - `array`<br>
+ * - `function`<br>
+ * - `object`<br>
+ * - `string[]`<br>
+ * - `object[]`<br>
+ * - `regexp`
+ *
+ * @class tinymce.EditorOptions
+ * @example
+ * // Register an option
+ * editor.options.register('custom_option', {
+ *   processor: 'string',
+ *   default: 'myoption'
+ * });
+ *
+ * // Lookup an option
+ * editor.options.get('custom_option');
+ *
+ * // Set an option
+ * editor.options.set('custom_option', 'value');
  */
 
 export interface Options {
@@ -96,7 +117,7 @@ export interface Options {
    * @return {Object} An option value, the registered default if not set, or undefined if not registered.
    */
   get: {
-    <K extends keyof EditorOptions>(name: K): EditorOptions[K] | undefined;
+    <K extends keyof EditorOptions>(name: K): EditorOptions[K];
     <T>(name: string): T | undefined;
   };
 
@@ -107,10 +128,7 @@ export interface Options {
    * @param {String} name Name of a registered option.
    * @return {Boolean} True if the option value was successfully set, otherwise false.
    */
-  set: {
-    <K extends keyof EditorOptions>(name: K, value: EditorOptions[K]): boolean;
-    <T>(name: string, value: T): boolean;
-  };
+  set: <K extends string, T>(name: K, value: K extends keyof NormalizedEditorOptions ? NormalizedEditorOptions[K] : T) => boolean;
 
   /**
    * Clear the set value for the specified option and revert back to the default value.
@@ -163,6 +181,8 @@ const getBuiltInProcessor = <K extends BuiltInOptionType>(type: K): Processor<Bu
         return (val) => Type.isArrayOf(val, Type.isObject);
       case 'regexp':
         return (val) => Type.is(val, RegExp);
+      default:
+        return Fun.always;
     }
   })() as SimpleProcessor | Processor<BuiltInOptionTypeMap[K]>;
 
@@ -208,20 +228,10 @@ const create = (editor: Editor, initialOptions: Record<string, unknown>): Option
   const registry: Record<string, OptionSpec<any, any>> = {};
   const values: Record<string, any> = {};
 
-  editor.on('init', () => {
-    const unregisteredOptions = Arr.filter(Obj.keys(initialOptions), (option) => !isRegistered(option) && option !== 'mobile');
-    if (unregisteredOptions.length > 0) {
-      // eslint-disable-next-line no-console
-      console.warn('The following options were specified but have not been registered:\n - ' + unregisteredOptions.join('\n - '));
-    }
-  });
-
   const setValue = <T, U>(name: string, value: T, processor: SimpleProcessor | Processor<U>): boolean => {
     const result = processValue(value, processor);
     if (isValidResult(result)) {
       values[name] = result.value;
-      // TODO: TINY-8236 (TINY-8234) Remove this later once all settings have been converted
-      editor.settings[name] = result.value;
       return true;
     } else {
       // eslint-disable-next-line no-console
@@ -277,8 +287,6 @@ const create = (editor: Editor, initialOptions: Record<string, unknown>): Option
     const registered = isRegistered(name);
     if (registered) {
       delete values[name];
-      // TODO: TINY-8236 (TINY-8234) Remove this later once all settings have been converted
-      delete editor.settings[name];
     }
     return registered;
   };

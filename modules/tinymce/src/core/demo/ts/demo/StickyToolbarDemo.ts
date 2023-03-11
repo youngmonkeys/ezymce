@@ -1,10 +1,12 @@
 import { SugarElement } from '@ephox/sugar';
 
-declare let tinymce: any;
+import { Editor, RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
 
-export default () => {
+declare let tinymce: TinyMCE;
 
-  const makeSidebar = (ed, name: string, background: string, width: number) => {
+export default (): void => {
+
+  const makeSidebar = (ed: Editor, name: string, background: string, width: number) => {
     ed.ui.registry.addSidebar(name, {
       icon: 'comment',
       tooltip: 'Tooltip for ' + name,
@@ -24,7 +26,7 @@ export default () => {
     });
   };
 
-  const stickySettings = {
+  const stickySettings: RawEditorOptions = {
     skin_url: '../../../../js/tinymce/skins/ui/oxide',
     content_css: '../../../../js/tinymce/skins/content/default/content.css',
     images_upload_url: 'd',
@@ -72,15 +74,14 @@ export default () => {
       makeSidebar(ed, 'sidebar1', 'green', 200);
     },
     plugins: [
-      'autosave advlist autolink link image lists charmap preview anchor pagebreak',
-      'searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking',
-      'save table directionality emoticons template paste importcss',
-      'codesample help noneditable'
+      'autosave', 'advlist', 'autolink', 'link', 'image', 'lists', 'charmap', 'preview', 'anchor', 'pagebreak',
+      'searchreplace', 'wordcount', 'visualblocks', 'visualchars', 'code', 'fullscreen', 'insertdatetime', 'media', 'nonbreaking',
+      'save', 'table', 'directionality', 'emoticons', 'template', 'importcss', 'codesample', 'help'
     ],
     // rtl_ui: true,
     add_unload_trigger: false,
     autosave_ask_before_unload: false,
-    toolbar: 'undo redo sidebar1 align fontsizeselect fontselect formatselect styleselect insertfile | styleselect | bold italic | alignleft aligncenter alignright alignjustify | ' +
+    toolbar: 'undo redo sidebar1 align fontsize fontfamily blocks styles insertfile | styles | bold italic | alignleft aligncenter alignright alignjustify | ' +
       'bullist numlist outdent indent | link image | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl',
     toolbar_mode: 'floating',
     toolbar_sticky: true

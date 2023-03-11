@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun, Optional, Optionals } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -54,7 +47,7 @@ const handleSubmit = (editor: Editor, info: LinkDialogInfo) => (api: Dialog.Dial
 };
 
 const collectData = (editor: Editor): Promise<LinkDialogInfo> => {
-  const anchorNode: HTMLAnchorElement = Utils.getAnchorElement(editor);
+  const anchorNode = Utils.getAnchorElement(editor);
   return DialogInfo.collect(editor, anchorNode);
 };
 

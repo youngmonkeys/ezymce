@@ -3,7 +3,7 @@ import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
-import { GetContentEvent } from 'tinymce/core/api/EventTypes';
+import { BeforeGetContentEvent } from 'tinymce/core/api/EventTypes';
 import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 import { GetSelectionContentArgs } from 'tinymce/core/content/ContentTypes';
 import { getContent } from 'tinymce/core/selection/GetSelectionContent';
@@ -15,14 +15,24 @@ describe('browser.tinymce.selection.GetSelectionContentTest', () => {
   }, []);
   const testDivId = 'testDiv1';
 
+  const assertSelectedRadioButtons = (editor: Editor, nrOfInputs: number, shouldBeSelected: number) => {
+    const total = editor.getBody().querySelectorAll('input').length;
+    const selected = editor.getBody().querySelectorAll('input:checked').length;
+
+    assert.equal(total, nrOfInputs, 'Should have the right amount of inputs');
+    assert.equal(selected, shouldBeSelected, 'Should have exactly one radio button');
+  };
+
   const focusDiv = () => {
-    const input = document.querySelector<HTMLDivElement>('#' + testDivId);
+    const input = document.querySelector('#' + testDivId) as HTMLDivElement;
     input.focus();
   };
 
   const removeTestDiv = () => {
     const input = document.querySelector('#' + testDivId);
-    input.parentNode.removeChild(input);
+    if (input) {
+      input.parentNode?.removeChild(input);
+    }
   };
 
   const addTestDiv = () => {
@@ -42,7 +52,7 @@ describe('browser.tinymce.selection.GetSelectionContentTest', () => {
   };
 
   const assertGetContentOverrideBeforeGetContent = (label: string, editor: Editor, expectedContent: string, args: Partial<GetSelectionContentArgs> = {}) => {
-    const handler = (e: EditorEvent<GetContentEvent>) => {
+    const handler = (e: EditorEvent<BeforeGetContentEvent>) => {
       if (e.selection === true) {
         e.preventDefault();
         e.content = expectedContent;
@@ -119,6 +129,14 @@ describe('browser.tinymce.selection.GetSelectionContentTest', () => {
     editor.setContent('<p>          This      Has\n     Spaces</p>');
     TinySelections.setSelection(editor, [ ], 0, [ ], 1);
     assertGetContent('Should be some content', editor, 'This Has Spaces', { format: 'text' });
+  });
+
+  it('TINY-7981: inputs should not be deselected', () => {
+    const editor = hook.editor();
+    editor.setContent('<p><input name="group-name" type="radio">Option 1<input checked="checked" name="group-name" type="radio">Option 2<input name="group-name" type="radio">Option 3</p>');
+    TinySelections.setSelection(editor, [ 0 ], 0, [ 0 ], 6);
+    assertGetContent('Should be some content', editor, 'Option 1Option 2Option 3', { format: 'text' });
+    assertSelectedRadioButtons(editor, 3, 1);
   });
 
   it('TBA: Should be text content without non-visible leading/trailing spaces', () => {

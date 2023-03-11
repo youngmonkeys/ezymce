@@ -16,8 +16,8 @@ describe('headless.tinymce.themes.silver.components.textarea.TextareaTest', () =
       label: Optional.some('LabelA'),
       placeholder: Optional.none(),
       maximized: false,
-      disabled: false
-    }, TestProviders)
+      enabled: true
+    }, TestProviders, Optional.none())
   ));
 
   // TODO: Fix dupe with Input test. Test Ctrl+Enter.
@@ -31,11 +31,16 @@ describe('headless.tinymce.themes.silver.components.textarea.TextareaTest', () =
             classes: [ arr.has('tox-label') ],
             html: str.is('LabelA')
           }),
-          s.element('textarea', {
-            classes: [ arr.has('tox-textarea') ],
-            attrs: {
-              'data-alloy-tabstop': str.is('true')
-            }
+          s.element('div', {
+            classes: [ arr.has('tox-textarea-wrap') ],
+            children: [
+              s.element('textarea', {
+                classes: [ arr.has('tox-textarea') ],
+                attrs: {
+                  'data-alloy-tabstop': str.is('true')
+                }
+              })
+            ]
           })
         ]
       })),

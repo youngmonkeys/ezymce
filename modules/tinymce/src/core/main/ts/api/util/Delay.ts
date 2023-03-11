@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 
 import Editor from '../Editor';
@@ -38,12 +31,12 @@ const wrappedSetInterval = (callback: Function, time?: number): number => {
 
 const Delay: Delay = {
   /**
-   * Sets an editor timeout it's similar to setTimeout except that it checks if the editor instance is
-   * still alive when the callback gets executed.
+   * Sets a timeout that's similar to the native browser <a href="https://developer.mozilla.org/en-US/docs/Web/API/setTimeout">setTimeout</a>
+   * API, except that it checks if the editor instance is still alive when the callback gets executed.
    *
    * @method setEditorTimeout
    * @param {tinymce.Editor} editor Editor instance to check the removed state on.
-   * @param {function} callback Callback to execute when timer runs out.
+   * @param {Function} callback Callback to execute when timer runs out.
    * @param {Number} time Optional time to wait before the callback is executed, defaults to 0.
    * @return {Number} Timeout id number.
    */
@@ -56,11 +49,11 @@ const Delay: Delay = {
   },
 
   /**
-   * Sets an interval timer it's similar to setInterval except that it checks if the editor instance is
-   * still alive when the callback gets executed.
+   * Sets an interval timer that's similar to native browser <a href="https://developer.mozilla.org/en-US/docs/Web/API/setInterval">setInterval</a>
+   * API, except that it checks if the editor instance is still alive when the callback gets executed.
    *
    * @method setEditorInterval
-   * @param {function} callback Callback to execute when interval time runs out.
+   * @param {Function} callback Callback to execute when interval time runs out.
    * @param {Number} time Optional time to wait before the callback is executed, defaults to 0.
    * @return {Number} Timeout id number.
    */

@@ -1,5 +1,6 @@
-import { ApproxStructure } from '@ephox/agar';
+import { ApproxStructure, UiFinder } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
+import { SugarBody } from '@ephox/sugar';
 import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -64,14 +65,13 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       return s.element('table', {
         attrs: {
           border: str.is('1'),
-          cellpadding: str.is('5'),
-          cellspacing: str.is('5')
         },
         styles: {
           'height': str.is('500px'),
           'width': str.is('500px'),
           'margin-left': str.is('0px'),
-          'margin-right': str.is('auto')
+          'margin-right': str.is('auto'),
+          'border-spacing': str.is('5px')
         },
         children: [
           s.element('caption', { }),
@@ -80,6 +80,10 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
               s.element('tr', {
                 children: [
                   s.element('td', {
+                    styles: {
+                      'border-width': str.is('1px'),
+                      'padding': str.is('5px')
+                    },
                     children: [
                       s.text(str.is('X'))
                     ]
@@ -95,9 +99,9 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
     const fullStandardData = {
       width: '500px',
       height: '500px',
-      cellspacing: '5',
-      cellpadding: '5',
-      border: '1',
+      cellspacing: '5px',
+      cellpadding: '5px',
+      border: '1px',
       caption: true,
       align: 'left'
     };
@@ -201,8 +205,8 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       align: 'left',
       class: 'dog',
       borderstyle: 'dotted',
-      bordercolor: '#ff0000',
-      backgroundcolor: '#0000ff'
+      bordercolor: '#FF0000',
+      backgroundcolor: '#0000FF'
     };
 
     const editor = hook.editor();
@@ -212,7 +216,6 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       { title: 'Cat', value: 'cat' }
     ]);
     editor.options.set('table_advtab', true);
-    editor.options.set('table_style_by_css', true);
     setTable(editor);
     setCursor(editor);
     await TableTestUtils.pOpenTableDialog(editor);
@@ -225,7 +228,9 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
     TableTestUtils.setDialogValues(emptyAllOnData, true, generalSelectors);
     await TableTestUtils.pClickDialogButton(editor, true);
     TableTestUtils.assertElementStructure(editor, 'table', htmlEmptyTable);
+
     editor.options.unset('table_class_list');
+    editor.options.unset('table_advtab');
   });
 
   it('TBA: Open dialog via execCommand', async () => {
@@ -247,18 +252,19 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       caption: true,
       align: 'left',
       borderstyle: 'dotted',
-      bordercolor: '#ff0000',
-      backgroundcolor: '#0000ff'
+      bordercolor: '#FF0000',
+      backgroundcolor: '#0000FF'
     };
 
     const editor = hook.editor();
     editor.options.set('table_advtab', true);
-    editor.options.set('table_style_by_css', true);
     editor.setContent(baseHtml);
     setCursor(editor);
     editor.execCommand('mceTableProps');
     TableTestUtils.assertDialogValues(baseData, true, generalSelectors);
     await TableTestUtils.pClickDialogButton(editor, false);
+
+    editor.options.unset('table_advtab');
   });
 
   it('TBA: Test cancel changes nothing and save does', async () => {
@@ -280,11 +286,12 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
 
     const newHtml =
     '<table class="dog" style="width: 500px; height: 500px; margin-left: 0px; margin-right: auto; ' +
-    'background-color: #0000ff; border: 1px dotted #ff0000; ' +
+    'background-color: rgb(0, 0, 255); border: 1px dotted rgb(255, 0, 0); ' +
     'border-spacing: 5px; border-collapse: collapse;" border="1">' +
     '<caption>Caption</caption>' +
     '<tbody>' +
-    '<tr><td style="border-color: #ff0000; border-width: 1px; padding: 5px;">X</td></tr>' +
+    '<tr><td style="border-color: rgb(255, 0, 0); border-width: 1px; padding: 5px;">X</td></tr>' +
+
     '</tbody>' +
     '</table>';
 
@@ -298,8 +305,8 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       align: 'left',
       class: 'dog',
       borderstyle: 'dotted',
-      bordercolor: '#ff0000',
-      backgroundcolor: '#0000ff'
+      bordercolor: '#FF0000',
+      backgroundcolor: '#0000FF'
     };
 
     const editor = hook.editor();
@@ -309,7 +316,6 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
       { title: 'Cat', value: 'cat' }
     ]);
     editor.options.set('table_advtab', true);
-    editor.options.set('table_style_by_css', true);
     editor.setContent(baseHtml);
     setCursor(editor);
     await TableTestUtils.pOpenTableDialog(editor);
@@ -326,6 +332,9 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
     await TableTestUtils.pOpenTableDialog(editor);
     TableTestUtils.assertDialogValues(newData, true, generalSelectors);
     await TableTestUtils.pClickDialogButton(editor, false);
+
+    editor.options.unset('table_class_list');
+    editor.options.unset('table_advtab');
   });
 
   it('TINY-6558: float style should not be recognised as a valid table alignment and is cleared when setting an alignment', async () => {
@@ -357,5 +366,79 @@ describe('browser.tinymce.plugins.table.TableDialogTest', () => {
     TableTestUtils.assertDialogValues(newData, false, generalSelectors);
     await TableTestUtils.pClickDialogButton(editor, false);
     editor.options.unset('table_appearance_options');
+  });
+
+  it('TINY-8758: width should be retained when changing the border width', async () => {
+    const getExpectedData = (borderWidth: number) => ({
+      width: '60%',
+      height: '',
+      cellspacing: '',
+      cellpadding: '',
+      border: borderWidth + 'px',
+      caption: false,
+      align: ''
+    });
+
+    const editor = hook.editor();
+    editor.setContent('<table style="border-collapse: collapse;" border="1px" width="60%"><tbody><tr><td>&nbsp;</td></tr></tbody></table>');
+    setCursor(editor);
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(getExpectedData(1), false, generalSelectors);
+    TableTestUtils.setDialogValues({ border: '2px' }, false, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, true);
+    TinyAssertions.assertContent(editor, '<table style="border-collapse: collapse; width: 60%; border-width: 2px;" border="1" width="60%"><tbody><tr><td style="border-width: 2px;">&nbsp;</td></tr></tbody></table>');
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(getExpectedData(2), false, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, false);
+  });
+
+  it('TINY-8758: Default width should be added as style', async () => {
+    const getExpectedData = (borderWidth: number, width: string) => ({
+      width,
+      height: '',
+      cellspacing: '',
+      cellpadding: '',
+      border: borderWidth + 'px',
+      caption: false,
+      align: ''
+    });
+
+    const editor = hook.editor();
+    editor.setContent('<table style="border-collapse: collapse;" border="1px"><tbody><tr><td>&nbsp;</td></tr></tbody></table>');
+    setCursor(editor);
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(getExpectedData(1, ''), false, generalSelectors);
+    TableTestUtils.setDialogValues({ border: '2px' }, false, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, true);
+    TinyAssertions.assertContent(editor, '<table style="border-collapse: collapse; border-width: 2px;" border="1"><tbody><tr><td style="border-width: 2px;">&nbsp;</td></tr></tbody></table>');
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(getExpectedData(2, ''), false, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, false);
+  });
+
+  it('TINY-9459: Should not open table properties dialog on noneditable table', () => {
+    const editor = hook.editor();
+    editor.setContent('<table contenteditable="false"><tbody><tr><td>x</td></tr></tbody></table>');
+    TinySelections.setCursor(editor, [ 1, 0, 0, 0, 0 ], 0); // Index offset off by one due to cef fake caret
+    editor.execCommand('mceTableProps');
+    UiFinder.notExists(SugarBody.body(), '.tox-dialog');
+  });
+
+  it('TINY-9459: Should not open table properties dialog on noneditable root', () => {
+    TableTestUtils.withNoneditableRootEditor(hook.editor(), (editor) => {
+      editor.setContent('<table><tbody><tr><td>x</td></tr></tbody></table>');
+      TinySelections.setCursor(editor, [ 0, 0, 0, 0, 0 ], 0);
+      editor.execCommand('mceTableProps');
+      UiFinder.notExists(SugarBody.body(), '.tox-dialog');
+    });
+  });
+
+  it('TINY-9459: Should not open table insert dialog on noneditable root', () => {
+    TableTestUtils.withNoneditableRootEditor(hook.editor(), (editor) => {
+      editor.setContent('<table><tbody><tr><td>x</td></tr></tbody></table>');
+      TinySelections.setCursor(editor, [ 0, 0, 0, 0, 0 ], 0);
+      editor.execCommand('mceInsertTableDialog');
+      UiFinder.notExists(SugarBody.body(), '.tox-dialog');
+    });
   });
 });

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Obj, Type } from '@ephox/katamari';
 import { Attribute, DomEvent, Insert, Remove, SugarElement, SugarShadowDom } from '@ephox/sugar';
 
@@ -15,6 +8,7 @@ import DomSerializer, { DomSerializerSettings } from '../api/dom/Serializer';
 import StyleSheetLoader from '../api/dom/StyleSheetLoader';
 import Editor from '../api/Editor';
 import EditorUpload from '../api/EditorUpload';
+import Env from '../api/Env';
 import * as Events from '../api/Events';
 import Formatter from '../api/Formatter';
 import DomParser, { DomParserSettings } from '../api/html/DomParser';
@@ -31,8 +25,10 @@ import * as DeleteCommands from '../delete/DeleteCommands';
 import * as NodeType from '../dom/NodeType';
 import * as TouchEvents from '../events/TouchEvents';
 import * as ForceBlocks from '../ForceBlocks';
+import * as NonEditableFilter from '../html/NonEditableFilter';
 import * as KeyboardOverrides from '../keyboard/KeyboardOverrides';
 import { NodeChange } from '../NodeChange';
+import * as Paste from '../paste/Paste';
 import * as Rtc from '../Rtc';
 import * as DetailsElement from '../selection/DetailsElement';
 import * as MultiClickSelection from '../selection/MultiClickSelection';
@@ -59,7 +55,8 @@ const appendStyle = (editor: Editor, text: string) => {
   });
 };
 
-const getRootName = (editor: Editor): string => editor.inline ? editor.getElement().nodeName.toLowerCase() : undefined;
+const getRootName = (editor: Editor): string | undefined =>
+  editor.inline ? editor.getElement().nodeName.toLowerCase() : undefined;
 
 const removeUndefined = <T>(obj: T): T => Obj.filter(obj as Record<string, unknown>, (v) => Type.isUndefined(v) === false) as T;
 
@@ -79,11 +76,11 @@ const mkParserSettings = (editor: Editor): DomParserSettings => {
     font_size_legacy_values: getOption('font_size_legacy_values'),
     forced_root_block: getOption('forced_root_block'),
     forced_root_block_attrs: getOption('forced_root_block_attrs'),
-    padd_empty_with_br: getOption('padd_empty_with_br'),
     preserve_cdata: getOption('preserve_cdata'),
     remove_trailing_brs: getOption('remove_trailing_brs'),
     inline_styles: getOption('inline_styles'),
     root_name: getRootName(editor),
+    sanitize: getOption('xss_sanitization'),
     validate: true,
     blob_cache: blobCache,
     document: editor.getDoc()
@@ -103,7 +100,8 @@ const mkSchemaSettings = (editor: Editor): SchemaSettings => {
     valid_classes: getOption('valid_classes'),
     valid_elements: getOption('valid_elements'),
     valid_styles: getOption('valid_styles'),
-    verify_html: getOption('verify_html')
+    verify_html: getOption('verify_html'),
+    padd_empty_block_inline_children: getOption('format_empty_lines')
   });
 };
 
@@ -134,13 +132,13 @@ const createParser = (editor: Editor): DomParser => {
 
   // Convert src and href into data-mce-src, data-mce-href and data-mce-style
   parser.addAttributeFilter('src,href,style,tabindex', (nodes, name) => {
-    let i = nodes.length, node: AstNode, value: string;
     const dom = editor.dom;
     const internalName = 'data-mce-' + name;
 
+    let i = nodes.length;
     while (i--) {
-      node = nodes[i];
-      value = node.attr(name);
+      const node = nodes[i];
+      let value: string | null | undefined = node.attr(name);
 
       // Add internal attribute if we need to we don't on a refresh of the document
       if (value && !node.attr(internalName)) {
@@ -181,7 +179,7 @@ const createParser = (editor: Editor): DomParser => {
     }
   });
 
-  if (editor.options.get('preserve_cdata')) {
+  if (Options.shouldPreserveCData(editor)) {
     parser.addNodeFilter('#cdata', (nodes: AstNode[]) => {
       let i = nodes.length;
 
@@ -189,7 +187,7 @@ const createParser = (editor: Editor): DomParser => {
         const node = nodes[i];
         node.type = 8;
         node.name = '#comment';
-        node.value = '[CDATA[' + editor.dom.encode(node.value) + ']]';
+        node.value = '[CDATA[' + editor.dom.encode(node.value ?? '') + ']]';
       }
     });
   }
@@ -202,7 +200,7 @@ const createParser = (editor: Editor): DomParser => {
       const node = nodes[i];
 
       if (node.isEmpty(nonEmptyElements) && node.getAll('br').length === 0) {
-        node.append(new AstNode('br', 1)).shortEnded = true;
+        node.append(new AstNode('br', 1));
       }
     }
   });
@@ -214,7 +212,7 @@ const autoFocus = (editor: Editor) => {
   const autoFocus = Options.getAutoFocus(editor);
   if (autoFocus) {
     Delay.setEditorTimeout(editor, () => {
-      let focusEditor;
+      let focusEditor: Editor | null;
 
       if (autoFocus === true) {
         focusEditor = editor;
@@ -222,8 +220,9 @@ const autoFocus = (editor: Editor) => {
         focusEditor = editor.editorManager.get(autoFocus);
       }
 
-      if (!focusEditor.destroyed) {
+      if (focusEditor && !focusEditor.destroyed) {
         focusEditor.focus();
+        focusEditor.selection.scrollIntoView();
       }
     }, 100);
   }
@@ -263,14 +262,14 @@ const getStyleSheetLoader = (editor: Editor): StyleSheetLoader =>
 
 const makeStylesheetLoadingPromises = (editor: Editor, css: string[], framedFonts: string[]): Promise<unknown>[] => {
   const promises = [
-    new Promise((resolve, reject) => getStyleSheetLoader(editor).loadAll(css, resolve, reject)),
+    getStyleSheetLoader(editor).loadAll(css)
   ];
 
   if (editor.inline) {
     return promises;
   } else {
     return promises.concat([
-      new Promise((resolve, reject) => editor.ui.styleSheetLoader.loadAll(framedFonts, resolve, reject)),
+      editor.ui.styleSheetLoader.loadAll(framedFonts)
     ]);
   }
 };
@@ -397,7 +396,7 @@ const contentBodyLoaded = (editor: Editor): void => {
       body.style.position = 'relative';
     }
 
-    body.contentEditable = '' + Options.getContentEditableState(editor);
+    body.contentEditable = 'true';
   }
 
   (body as any).disabled = false;
@@ -412,12 +411,12 @@ const contentBodyLoaded = (editor: Editor): void => {
     url_converter_scope: editor,
     update_styles: true,
     root_element: editor.inline ? editor.getBody() : null,
-    collect: () => editor.inline,
+    collect: editor.inline,
     schema: editor.schema,
     contentCssCors: Options.shouldUseContentCssCors(editor),
     referrerPolicy: Options.getReferrerPolicy(editor),
     onSetAttrib: (e) => {
-      editor.fire('SetAttrib', e);
+      editor.dispatch('SetAttrib', e);
     }
   });
 
@@ -432,6 +431,7 @@ const contentBodyLoaded = (editor: Editor): void => {
 
   TouchEvents.setup(editor);
   DetailsElement.setup(editor);
+  NonEditableFilter.setup(editor);
 
   if (!Rtc.isRtc(editor)) {
     MultiClickSelection.setup(editor);
@@ -442,6 +442,7 @@ const contentBodyLoaded = (editor: Editor): void => {
   DeleteCommands.setup(editor, caret);
   ForceBlocks.setup(editor);
   Placeholder.setup(editor);
+  Paste.setup(editor);
 
   const setupRtcThunk = Rtc.setup(editor);
 
@@ -466,25 +467,35 @@ const contentBodyLoaded = (editor: Editor): void => {
   });
 };
 
-const initContentBody = (editor: Editor, skipWrite?: boolean) => {
+const initContentBody = (editor: Editor, skipWrite?: boolean): void => {
   // Restore visibility on target element
   if (!editor.inline) {
-    editor.getElement().style.visibility = editor.orgVisibility;
+    editor.getElement().style.visibility = editor.orgVisibility as string;
   }
 
   // Setup iframe body
   if (!skipWrite && !editor.inline) {
-    const iframe = editor.iframeElement;
+    const iframe = editor.iframeElement as HTMLIFrameElement;
     const binder = DomEvent.bind(SugarElement.fromDom(iframe), 'load', () => {
       binder.unbind();
 
       // Reset the content document, since using srcdoc will change the document
-      editor.contentDocument = iframe.contentDocument;
+      editor.contentDocument = iframe.contentDocument as Document;
 
       // Continue to init the editor
       contentBodyLoaded(editor);
     });
-    iframe.srcdoc = editor.iframeHTML;
+
+    // TINY-8916: Firefox has a bug in its srcdoc implementation that prevents cookies being sent so unfortunately we need
+    // to fallback to legacy APIs to load the iframe content. See https://bugzilla.mozilla.org/show_bug.cgi?id=1741489
+    if (Env.browser.isFirefox()) {
+      const doc = editor.getDoc();
+      doc.open();
+      doc.write(editor.iframeHTML as string);
+      doc.close();
+    } else {
+      iframe.srcdoc = editor.iframeHTML as string;
+    }
   } else {
     contentBodyLoaded(editor);
   }

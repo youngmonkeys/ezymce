@@ -1,11 +1,12 @@
+import { UiFinder } from '@ephox/agar';
 import { afterEach, describe, it } from '@ephox/bedrock-client';
-import { SugarElement, SugarNode } from '@ephox/sugar';
+import { SugarBody, SugarElement, SugarNode } from '@ephox/sugar';
 import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { TableEventData, TableModifiedEvent } from 'tinymce/core/api/EventTypes';
 import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
-import { TableEventData, TableModifiedEvent } from 'tinymce/plugins/table/api/Events';
 import Plugin from 'tinymce/plugins/table/Plugin';
 
 import * as TableTestUtils from '../../module/test/TableTestUtils';
@@ -20,11 +21,11 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       '*': 'width,height,vertical-align,text-align,float,border-color,border-style,background-color,border,padding,border-spacing,border-collapse,border-width'
     },
     setup: (editor: Editor) => {
-      editor.on('tablemodified', (event) => {
+      editor.on('TableModified', (event) => {
         logEventTypes(event);
         logTableModified(event);
       });
-      editor.on('newcell', logEventTypes);
+      editor.on('NewCell', logEventTypes);
     }
   }, [ Plugin ], true);
 
@@ -98,7 +99,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
     backgroundcolor: '',
     bordercolor: '',
     borderstyle: '',
-    border: ''
+    borderwidth: ''
   };
 
   afterEach(() => {
@@ -152,7 +153,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       borderstyle: 'dashed',
       bordercolor: 'red',
       backgroundcolor: 'blue',
-      border: '2px'
+      borderwidth: '2px'
     };
 
     const editor = hook.editor();
@@ -176,7 +177,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       backgroundcolor: 'blue',
       bordercolor: 'red',
       borderstyle: 'dashed',
-      border: ''
+      borderwidth: ''
     };
 
     const advHtml = '<table><tbody><tr><th style="width: 10px; height: 11px; vertical-align: top; text-align: right; ' +
@@ -224,7 +225,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       borderstyle: 'dashed',
       bordercolor: '',
       backgroundcolor: 'red',
-      border: ''
+      borderwidth: ''
     };
 
     const editor = hook.editor();
@@ -233,6 +234,126 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
     TinySelections.select(editor, 'td:nth-child(2)', [ 0 ]);
     await TableTestUtils.pOpenTableDialog(editor);
     TableTestUtils.assertDialogValues(baseAdvData, true, generalSelectors);
+    TableTestUtils.setDialogValues(newData, true, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, true);
+    TinyAssertions.assertContent(editor, newHtml);
+    assertEventsOrder();
+  });
+
+  it('TINY-8625: Table cell properties dialog update multiple cells, but does not override unchanged values', async () => {
+    const initialHtml = '<table>' +
+      '<colgroup>' +
+        '<col style="width: 25.3548%;">' +
+        '<col style="width: 74.5433%;">' +
+      '</colgroup>' +
+      '<tbody>' +
+        '<tr>' +
+          '<td data-mce-selected="1" style="height: 200px; border-color: blue;">&nbsp;</td>' +
+          '<td data-mce-selected="1" style="height: 200px; border-color: red;">&nbsp;</td>' +
+        '</tr>' +
+      '</tbody>' +
+    '</table>';
+
+    const initialDialogValues = {
+      width: '',
+      height: '200px',
+      celltype: 'td',
+      halign: '',
+      valign: '',
+      scope: '',
+      backgroundcolor: '',
+      bordercolor: '',
+      borderstyle: '',
+      borderwidth: ''
+    };
+
+    const newHtml = '<table>' +
+      '<colgroup>' +
+        '<col style="width: 25.3548%;">' +
+        '<col style="width: 74.5433%;">' +
+      '</colgroup>' +
+      '<tbody>' +
+        '<tr>' +
+          '<td style="height: 20px; text-align: center; border-color: blue; background-color: red;">&nbsp;</td>' +
+          '<td style="height: 20px; text-align: center; border-color: red; background-color: red;">&nbsp;</td>' +
+        '</tr>' +
+      '</tbody>' +
+    '</table>';
+
+    const newData = {
+      height: '20',
+      halign: 'center',
+      backgroundcolor: 'red'
+    };
+
+    const editor = hook.editor();
+    assertEventsOrder([]);
+    editor.setContent(initialHtml);
+    TinySelections.select(editor, 'td:nth-child(2)', [ 0 ]);
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(initialDialogValues, true, generalSelectors);
+    TableTestUtils.setDialogValues(newData, true, generalSelectors);
+    await TableTestUtils.pClickDialogButton(editor, true);
+    TinyAssertions.assertContent(editor, newHtml);
+    assertEventsOrder();
+  });
+
+  it('TINY-8625: Table cell properties dialog update multiple cells allows resetting values', async () => {
+    const initialHtml = '<table>' +
+      '<colgroup>' +
+        '<col style="width: 25.3548%;">' +
+        '<col style="width: 74.5433%;">' +
+      '</colgroup>' +
+      '<tbody>' +
+        '<tr>' +
+          '<td data-mce-selected="1" style="height: 200px; vertical-align: bottom; text-align: center; border-color: blue; border-style: dotted; border-width: 2px; background-color: red;">&nbsp;</td>' +
+          '<td data-mce-selected="1" style="height: 200px; vertical-align: bottom; text-align: center; border-color: blue; border-style: dotted; border-width: 2px; background-color: red;">&nbsp;</td>' +
+        '</tr>' +
+      '</tbody>' +
+    '</table>';
+
+    const initialDialogValues = {
+      width: '',
+      height: '200px',
+      celltype: 'td',
+      halign: 'center',
+      valign: 'bottom',
+      scope: '',
+      backgroundcolor: 'red',
+      bordercolor: 'blue',
+      borderstyle: 'dotted',
+      borderwidth: '2px'
+    };
+
+    const newHtml = '<table>' +
+      '<colgroup>' +
+        '<col style="width: 25.3548%;">' +
+        '<col style="width: 74.5433%;">' +
+      '</colgroup>' +
+      '<tbody>' +
+        '<tr>' +
+          '<td>&nbsp;</td>' +
+          '<td>&nbsp;</td>' +
+        '</tr>' +
+      '</tbody>' +
+    '</table>';
+
+    const newData = {
+      height: '',
+      halign: '',
+      valign: '',
+      backgroundcolor: '',
+      bordercolor: '',
+      borderstyle: '',
+      borderwidth: ''
+    };
+
+    const editor = hook.editor();
+    assertEventsOrder([]);
+    editor.setContent(initialHtml);
+    TinySelections.select(editor, 'td:nth-child(2)', [ 0 ]);
+    await TableTestUtils.pOpenTableDialog(editor);
+    TableTestUtils.assertDialogValues(initialDialogValues, true, generalSelectors);
     TableTestUtils.setDialogValues(newData, true, generalSelectors);
     await TableTestUtils.pClickDialogButton(editor, true);
     TinyAssertions.assertContent(editor, newHtml);
@@ -253,7 +374,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       backgroundcolor: 'blue',
       bordercolor: 'red',
       borderstyle: 'dashed',
-      border: ''
+      borderwidth: ''
     };
 
     const emptyTable = '<table><tbody><tr><th>X</th></tr></tbody></table>';
@@ -268,7 +389,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       backgroundcolor: '',
       bordercolor: '',
       borderstyle: '',
-      border: ''
+      borderwidth: ''
     };
 
     const editor = hook.editor();
@@ -298,7 +419,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       backgroundcolor: 'blue',
       bordercolor: 'red',
       borderstyle: 'dashed',
-      border: 'thick'
+      borderwidth: 'thick'
     };
 
     const editor = hook.editor();
@@ -321,7 +442,7 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
       borderstyle: 'dashed',
       bordercolor: 'red',
       backgroundcolor: 'blue',
-      border: ''
+      borderwidth: ''
     };
 
     const advHtml = '<table><tbody><tr><th style="width: 10px; height: 11px; vertical-align: top; text-align: right; ' +
@@ -404,5 +525,22 @@ describe('browser.tinymce.plugins.table.TableCellDialogTest', () => {
     TinyAssertions.assertContent(editor, expectedhtml);
     assertEventsOrder([ 'tablemodified' ]);
     assertTableModifiedEvent({ structure: false, style: false });
+  });
+
+  it('TINY-9459: Should not open table row properties dialog on noneditable table', () => {
+    const editor = hook.editor();
+    editor.setContent('<table contenteditable="false"><tbody><tr><td>x</td></tr></tbody></table>');
+    TinySelections.setCursor(editor, [ 1, 0, 0, 0, 0 ], 0); // Index offset off by one due to cef fake caret
+    editor.execCommand('mceTableCellProps');
+    UiFinder.notExists(SugarBody.body(), '.tox-dialog');
+  });
+
+  it('TINY-9459: Should not open table row properties dialog on noneditable root', () => {
+    TableTestUtils.withNoneditableRootEditor(hook.editor(), (editor) => {
+      editor.setContent('<table><tbody><tr><td>x</td></tr></tbody></table>');
+      TinySelections.setCursor(editor, [ 0, 0, 0, 0, 0 ], 0);
+      editor.execCommand('mceTableCellProps');
+      UiFinder.notExists(SugarBody.body(), '.tox-dialog');
+    });
   });
 });

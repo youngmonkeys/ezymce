@@ -1,22 +1,16 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Fun, Obj, Type } from '@ephox/katamari';
+import { Fun, Obj, Strings, Type } from '@ephox/katamari';
+import { TableLookup } from '@ephox/snooker';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
 import Editor from 'tinymce/core/api/Editor';
 import { StyleMap } from 'tinymce/core/api/html/Styles';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 
-import * as InsertTable from '../actions/InsertTable';
 import * as Styles from '../actions/Styles';
 import * as Events from '../api/Events';
 import * as Options from '../api/Options';
-import * as Util from '../core/Util';
+import * as Utils from '../core/Utils';
+import * as TableSelection from '../selection/TableSelection';
 import { getAdvancedTab } from './DialogAdvancedTab';
 import * as Helpers from './Helpers';
 import * as TableDialogGeneralTab from './TableDialogGeneralTab';
@@ -27,10 +21,10 @@ type TableData = Helpers.TableData;
 // Explore the layers of the table till we find the first layer of tds or ths
 const styleTDTH = (dom: DOMUtils, elm: Element, name: string | StyleMap, value?: string | number): void => {
   if (elm.tagName === 'TD' || elm.tagName === 'TH') {
-    if (Type.isString(name)) {
+    if (Type.isString(name) && Type.isNonNullable(value)) {
       dom.setStyle(elm, name, value);
     } else {
-      dom.setStyles(elm, name);
+      dom.setStyles(elm, name as StyleMap);
     }
   } else {
     if (elm.children) {
@@ -43,22 +37,24 @@ const styleTDTH = (dom: DOMUtils, elm: Element, name: string | StyleMap, value?:
 
 const applyDataToElement = (editor: Editor, tableElm: HTMLTableElement, data: TableData): void => {
   const dom = editor.dom;
-  const attrs: any = {};
-  const styles: any = {};
+  const attrs: Record<string, string | number | null> = {};
+  const styles: Record<string, string> = {};
 
-  attrs.class = data.class;
+  if (!Type.isUndefined(data.class)) {
+    attrs.class = data.class;
+  }
 
-  styles.height = Util.addPxSuffix(data.height);
+  styles.height = Utils.addPxSuffix(data.height);
 
-  if (dom.getAttrib(tableElm, 'width') && !Options.shouldStyleWithCss(editor)) {
-    attrs.width = Util.removePxSuffix(data.width);
-  } else {
-    styles.width = Util.addPxSuffix(data.width);
+  if (Options.shouldStyleWithCss(editor)) {
+    styles.width = Utils.addPxSuffix(data.width);
+  } else if (dom.getAttrib(tableElm, 'width')) {
+    attrs.width = Utils.removePxSuffix(data.width);
   }
 
   if (Options.shouldStyleWithCss(editor)) {
-    styles['border-width'] = Util.addPxSuffix(data.border);
-    styles['border-spacing'] = Util.addPxSuffix(data.cellspacing);
+    styles['border-width'] = Utils.addPxSuffix(data.border);
+    styles['border-spacing'] = Utils.addPxSuffix(data.cellspacing);
   } else {
     attrs.border = data.border;
     attrs.cellpadding = data.cellpadding;
@@ -70,21 +66,22 @@ const applyDataToElement = (editor: Editor, tableElm: HTMLTableElement, data: Ta
   if (Options.shouldStyleWithCss(editor) && tableElm.children) {
     for (let i = 0; i < tableElm.children.length; i++) {
       styleTDTH(dom, tableElm.children[i], {
-        'border-width': Util.addPxSuffix(data.border),
-        'padding': Util.addPxSuffix(data.cellpadding)
+        'border-width': Utils.addPxSuffix(data.border),
+        'padding': Utils.addPxSuffix(data.cellpadding)
       });
       if (Options.hasAdvancedTableTab(editor)) {
         styleTDTH(dom, tableElm.children[i], {
-          'border-color': data.bordercolor
+          'border-color': (data as Required<TableData>).bordercolor
         });
       }
     }
   }
 
   if (Options.hasAdvancedTableTab(editor)) {
-    styles['background-color'] = data.backgroundcolor;
-    styles['border-color'] = data.bordercolor;
-    styles['border-style'] = data.borderstyle;
+    const advData = data as Required<TableData>;
+    styles['background-color'] = advData.backgroundcolor;
+    styles['border-color'] = advData.bordercolor;
+    styles['border-style'] = advData.borderstyle;
   }
 
   attrs.style = dom.serializeStyle({ ...Options.getDefaultStyles(editor), ...styles });
@@ -92,10 +89,10 @@ const applyDataToElement = (editor: Editor, tableElm: HTMLTableElement, data: Ta
 
 };
 
-const onSubmitTableForm = (editor: Editor, tableElm: HTMLTableElement | undefined, oldData: TableData, api: Dialog.DialogInstanceApi<TableData>): void => {
+const onSubmitTableForm = (editor: Editor, tableElm: HTMLTableElement | null | undefined, oldData: TableData, api: Dialog.DialogInstanceApi<TableData>): void => {
   const dom = editor.dom;
   const data = api.getData();
-  const modifiedData = Obj.filter(data, (value, key) => oldData[key] !== value);
+  const modifiedData = Obj.filter(data, (value, key) => oldData[key as keyof TableData] !== value);
 
   api.close();
 
@@ -105,10 +102,14 @@ const onSubmitTableForm = (editor: Editor, tableElm: HTMLTableElement | undefine
 
   editor.undoManager.transact(() => {
     if (!tableElm) {
-      const cols = parseInt(data.cols, 10) || 1;
-      const rows = parseInt(data.rows, 10) || 1;
+      const cols = Strings.toInt(data.cols as string).getOr(1);
+      const rows = Strings.toInt(data.rows as string).getOr(1);
       // Cases 1 & 3 - inserting a table
-      tableElm = InsertTable.insert(editor, cols, rows, 0, 0);
+      editor.execCommand('mceInsertTable', false, { rows, columns: cols });
+      tableElm = TableSelection.getSelectionCell(Utils.getSelectionStart(editor), Utils.getIsRoot(editor))
+        .bind((cell) => TableLookup.table(cell, Utils.getIsRoot(editor)))
+        .map((table) => table.dom)
+        .getOrDie();
     }
 
     if (Obj.size(modifiedData) > 0) {
@@ -121,11 +122,7 @@ const onSubmitTableForm = (editor: Editor, tableElm: HTMLTableElement | undefine
         editor.execCommand('mceTableToggleCaption');
       }
 
-      if (data.align === '') {
-        Styles.unApplyAlign(editor, tableElm);
-      } else {
-        Styles.applyAlign(editor, tableElm, data.align);
-      }
+      Styles.setAlign(editor, tableElm, data.align);
     }
 
     editor.focus();
@@ -143,7 +140,7 @@ const onSubmitTableForm = (editor: Editor, tableElm: HTMLTableElement | undefine
 
 const open = (editor: Editor, insertNewTable: boolean): void => {
   const dom = editor.dom;
-  let tableElm: Element;
+  let tableElm: HTMLTableElement | null | undefined;
   let data = Helpers.extractDataFromSettings(editor, Options.hasAdvancedTableTab(editor));
 
   // Cases for creation/update of tables:
@@ -152,8 +149,17 @@ const open = (editor: Editor, insertNewTable: boolean): void => {
   // 2. isNew == false && selection parent is a table - update the table
   // 3. isNew == false && selection parent isn't a table - open dialog with default values and insert a table
 
-  if (insertNewTable === false) {
-    tableElm = dom.getParent(editor.selection.getStart(), 'table', editor.getBody());
+  if (insertNewTable) {
+    // Case 1 - isNew == true. We're inserting a new table so use defaults and add cols and rows + adv properties.
+    data.cols = '1';
+    data.rows = '1';
+    if (Options.hasAdvancedTableTab(editor)) {
+      data.borderstyle = '';
+      data.bordercolor = '';
+      data.backgroundcolor = '';
+    }
+  } else {
+    tableElm = dom.getParent<HTMLTableElement>(editor.selection.getStart(), 'table', editor.getBody());
     if (tableElm) {
       // Case 2 - isNew == false && table parent
       data = Helpers.extractDataFromTableElement(editor, tableElm, Options.hasAdvancedTableTab(editor));
@@ -164,15 +170,6 @@ const open = (editor: Editor, insertNewTable: boolean): void => {
         data.bordercolor = '';
         data.backgroundcolor = '';
       }
-    }
-  } else {
-    // Case 1 - isNew == true. We're inserting a new table so use defaults and add cols and rows + adv properties.
-    data.cols = '1';
-    data.rows = '1';
-    if (Options.hasAdvancedTableTab(editor)) {
-      data.borderstyle = '';
-      data.bordercolor = '';
-      data.backgroundcolor = '';
     }
   }
 

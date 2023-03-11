@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Type } from '@ephox/katamari';
 import { SugarElement, SugarShadowDom } from '@ephox/sugar';
 
@@ -15,12 +8,11 @@ import Editor from 'tinymce/core/api/Editor';
 import * as Options from '../../api/Options';
 import * as SkinLoaded from './SkinLoaded';
 
-const loadStylesheet = (editor: Editor, stylesheetUrl: string, styleSheetLoader: StyleSheetLoader): Promise<void> => new Promise((resolve, reject) => {
-  styleSheetLoader.load(stylesheetUrl, resolve, reject);
-
+const loadStylesheet = (editor: Editor, stylesheetUrl: string, styleSheetLoader: StyleSheetLoader): Promise<void> => {
   // Ensure the stylesheet is cleaned up when the editor is destroyed
   editor.on('remove', () => styleSheetLoader.unload(stylesheetUrl));
-});
+  return styleSheetLoader.load(stylesheetUrl);
+};
 
 const loadUiSkins = (editor: Editor, skinUrl: string): Promise<void> => {
   const skinUiCss = skinUrl + '/skin.min.css';
@@ -37,7 +29,7 @@ const loadShadowDomUiSkins = (editor: Editor, skinUrl: string): Promise<void> =>
   }
 };
 
-const loadSkin = (isInline: boolean, editor: Editor) => {
+const loadSkin = (isInline: boolean, editor: Editor): Promise<void> => {
   const skinUrl = Options.getSkinUrl(editor);
 
   if (skinUrl) {
@@ -47,12 +39,12 @@ const loadSkin = (isInline: boolean, editor: Editor) => {
   // In Modern Inline, this is explicitly called in editor.on('focus', ...) as well as in render().
   // Seems to work without, but adding a note in case things break later
   if (!Options.isSkinDisabled(editor) && Type.isString(skinUrl)) {
-    Promise.all([
+    return Promise.all([
       loadUiSkins(editor, skinUrl),
       loadShadowDomUiSkins(editor, skinUrl)
     ]).then(SkinLoaded.fireSkinLoaded(editor), SkinLoaded.fireSkinLoadError(editor, 'Skin could not be loaded'));
   } else {
-    SkinLoaded.fireSkinLoaded(editor)();
+    return Promise.resolve(SkinLoaded.fireSkinLoaded(editor)());
   }
 };
 

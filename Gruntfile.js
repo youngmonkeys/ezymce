@@ -4,7 +4,6 @@ const runsHeadless = [
   '@ephox/mcagar',
   '@ephox/katamari',
   '@ephox/katamari-test',
-  '@ephox/imagetools',
   '@ephox/jax'
 ];
 
@@ -64,6 +63,9 @@ const bedrockHeadless = (tests, browser, auto) => {
         name: 'headless-tests',
         browser,
         testfiles: testFolders(tests, auto),
+
+        // we have a few tests that don't play nicely when combined together in the monorepo
+        retries: 3
       }
     }
   }
@@ -133,7 +135,7 @@ module.exports = function (grunt) {
   const browserTests = filterChangesNot(changes, runsHeadless);
 
   const activeBrowser = grunt.option('bedrock-browser') || 'chrome-headless';
-  const headlessBrowser = activeBrowser.endsWith("-headless") ? activeBrowser : 'chrome-headless'
+  const headlessBrowser = activeBrowser.endsWith("-headless") ? activeBrowser : 'chrome-headless';
   const activeOs = grunt.option('bedrock-os') || 'tests';
   const gruntConfig = {
     shell: {

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Strings } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -22,9 +15,10 @@ const setup = (editor: Editor): void => {
 
       dom.setAttrib(elm, 'class', Strings.trim(dom.getAttrib(elm, 'class')));
       dom.setAttrib(elm, 'contentEditable', null);
+      dom.setAttrib(elm, 'data-mce-highlighted', null);
 
       // Empty the pre element
-      let child: Node;
+      let child: Node | null;
       while ((child = elm.firstChild)) {
         elm.removeChild(child);
       }
@@ -38,23 +32,36 @@ const setup = (editor: Editor): void => {
   editor.on('SetContent', () => {
     const dom = editor.dom;
     const unprocessedCodeSamples = Tools.grep(dom.select('pre'), (elm) => {
-      return Utils.isCodeSample(elm) && elm.contentEditable !== 'false';
+      return Utils.isCodeSample(elm) && dom.getAttrib(elm, 'data-mce-highlighted') !== 'true';
     });
 
     if (unprocessedCodeSamples.length) {
       editor.undoManager.transact(() => {
         Tools.each(unprocessedCodeSamples, (elm) => {
           Tools.each(dom.select('br', elm), (elm) => {
-            elm.parentNode.replaceChild(editor.getDoc().createTextNode('\n'), elm);
+            dom.replace(editor.getDoc().createTextNode('\n'), elm);
           });
 
-          elm.contentEditable = 'false';
-          elm.innerHTML = dom.encode(elm.textContent);
+          elm.innerHTML = dom.encode(elm.textContent ?? '');
           Prism.get(editor).highlightElement(elm);
+          dom.setAttrib(elm, 'data-mce-highlighted', true);
           elm.className = Strings.trim(elm.className);
         });
       });
     }
+  });
+
+  editor.on('PreInit', () => {
+    editor.parser.addNodeFilter('pre', (nodes) => {
+      for (let i = 0, l = nodes.length; i < l; i++) {
+        const node = nodes[i];
+        const isCodeSample = (node.attr('class') ?? '').indexOf('language-') !== -1;
+        if (isCodeSample) {
+          node.attr('contenteditable', 'false');
+          node.attr('data-mce-highlighted', 'false');
+        }
+      }
+    });
   });
 };
 

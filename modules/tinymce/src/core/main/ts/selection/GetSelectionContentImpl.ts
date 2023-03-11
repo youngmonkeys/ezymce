@@ -1,14 +1,8 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
 import Editor from '../api/Editor';
+import { cleanupBogusElements, cleanupInputNames } from '../content/ContentCleanup';
 import { Content, ContentFormat, GetSelectionContentArgs } from '../content/ContentTypes';
 import { postProcessGetContent, preProcessGetContent } from '../content/PrePostProcess';
 import * as CharType from '../text/CharType';
@@ -33,14 +27,19 @@ const getTextContent = (editor: Editor): string =>
 
     const contextNodeName = getContextNodeName(parentBlockOpt);
 
+    const rangeContentClone = SugarElement.fromDom(rng.cloneContents());
+    cleanupBogusElements(rangeContentClone);
+    cleanupInputNames(rangeContentClone);
+
     const bin = editor.dom.add(body, contextNodeName, {
       'data-mce-bogus': 'all',
       'style': 'overflow: hidden; opacity: 0;'
-    }, rng.cloneContents());
+    }, rangeContentClone.dom);
+
     const text = getInnerText(bin);
 
     // textContent will not strip leading/trailing spaces since it doesn't consider how it'll render
-    const nonRenderedText = Zwsp.trim(bin.textContent);
+    const nonRenderedText = Zwsp.trim(bin.textContent ?? '');
     editor.dom.remove(bin);
 
     if (isCollapsibleWhitespace(nonRenderedText, 0) || isCollapsibleWhitespace(nonRenderedText, nonRenderedText.length - 1)) {

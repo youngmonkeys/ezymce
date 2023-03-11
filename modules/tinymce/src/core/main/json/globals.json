@@ -28,17 +28,18 @@
       "tinymce.core.api.html.DomParser",
       "tinymce.core.api.html.Entities",
       "tinymce.core.api.html.Node",
-      "tinymce.core.api.html.SaxParser",
       "tinymce.core.api.html.Schema",
       "tinymce.core.api.html.Serializer",
       "tinymce.core.api.html.Styles",
       "tinymce.core.api.html.Writer",
+      "tinymce.core.api.ModelManager",
       "tinymce.core.api.NotificationManager",
       "tinymce.core.api.PluginManager",
       "tinymce.core.api.Resource",
       "tinymce.core.api.Shortcuts",
       "tinymce.core.api.ThemeManager",
       "tinymce.core.api.UndoManager",
+      "tinymce.core.api.FakeClipboard",
       "tinymce.core.api.util.Delay",
       "tinymce.core.api.util.EventDispatcher",
       "tinymce.core.api.util.I18n",
@@ -47,8 +48,7 @@
       "tinymce.core.api.util.Observable",
       "tinymce.core.api.util.Tools",
       "tinymce.core.api.util.URI",
-      "tinymce.core.api.util.VK",
-      "tinymce.core.api.util.XHR"
+      "tinymce.core.api.util.VK"
     ]
   }
 }

@@ -1,23 +1,18 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Throttler } from '@ephox/katamari';
 
 import DOMUtils from '../api/dom/DOMUtils';
 import Editor from '../api/Editor';
+import { NodeChangeEvent, SetSelectionRangeEvent } from '../api/EventTypes';
+import { EditorEvent } from '../api/util/EventDispatcher';
 import * as SelectionBookmark from './SelectionBookmark';
 
 type StoreThrottler = Throttler.Throttler<[]>;
 
-const isManualNodeChange = (e) => {
-  return e.type === 'nodechange' && e.selectionChange;
+const isManualNodeChange = (e: EditorEvent<NodeChangeEvent | KeyboardEvent | SetSelectionRangeEvent>) => {
+  return e.type === 'nodechange' && (e as NodeChangeEvent).selectionChange;
 };
 
-const registerPageMouseUp = (editor: Editor, throttledStore) => {
+const registerPageMouseUp = (editor: Editor, throttledStore: StoreThrottler) => {
   const mouseUpPage = () => {
     throttledStore.throttle();
   };
@@ -38,14 +33,14 @@ const registerMouseUp = (editor: Editor, throttledStore: StoreThrottler) => {
 const registerEditorEvents = (editor: Editor, throttledStore: StoreThrottler) => {
   registerMouseUp(editor, throttledStore);
 
-  editor.on('keyup NodeChange', (e) => {
+  editor.on('keyup NodeChange AfterSetSelectionRange', (e) => {
     if (!isManualNodeChange(e)) {
       SelectionBookmark.store(editor);
     }
   });
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
   const throttledStore = Throttler.first(() => {
     SelectionBookmark.store(editor);
   }, 0);

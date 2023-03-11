@@ -2,13 +2,13 @@
 import { Merger } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
-import { RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
+import { Editor, RawEditorOptions, TinyMCE } from 'tinymce/core/api/PublicApi';
 
 declare let tinymce: TinyMCE;
 
-export default () => {
+export default (): void => {
 
-  const makeSidebar = (ed, name: string, background: string, width: number) => {
+  const makeSidebar = (ed: Editor, name: string, background: string, width: number) => {
     ed.ui.registry.addSidebar(name, {
       icon: 'comment',
       tooltip: 'Tooltip for ' + name,
@@ -25,6 +25,36 @@ export default () => {
       },
       onHide: (_api) => {
         console.log('onHide ' + name);
+      }
+    });
+  };
+
+  const makeCodeView = (editor: Editor) => {
+    editor.ui.registry.addView('code', {
+      buttons: [
+        {
+          type: 'button',
+          text: 'Cancel',
+          buttonType: 'secondary',
+          onAction: () => {
+            editor.execCommand('ToggleView', false, 'code');
+            console.log('close');
+          }
+        },
+        {
+          type: 'button',
+          text: 'Save code',
+          buttonType: 'primary',
+          onAction: () => {
+            console.log('save');
+          }
+        },
+      ],
+      onShow: (api) => {
+        api.getContainer().innerHTML = '<div style="height: 100%"><textarea class="tox-view__pane_panel" style="width: 100%; height: 100%">Hello world!</textarea></div>';
+      },
+      onHide: (api) => {
+        console.log('Deactivate code', api.getContainer());
       }
     });
   };
@@ -86,27 +116,28 @@ export default () => {
     theme: 'silver',
     setup: (ed) => {
       makeSidebar(ed, 'sidebar1', 'green', 200);
+      makeSidebar(ed, 'sidebar2', 'green', 200);
+      makeCodeView(ed);
     },
     plugins: [
-      'autosave advlist autolink link image lists charmap preview anchor pagebreak',
-      'searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking',
-      'save table directionality emoticons template paste importcss',
-      'codesample help noneditable'
+      'autosave', 'advlist', 'autolink', 'link', 'image', 'lists', 'charmap', 'preview', 'anchor', 'pagebreak',
+      'searchreplace', 'wordcount', 'visualblocks', 'visualchars', 'code', 'fullscreen', 'insertdatetime', 'media', 'nonbreaking',
+      'save', 'table', 'directionality', 'emoticons', 'template', 'importcss', 'codesample', 'help'
     ],
     // rtl_ui: true,
     add_unload_trigger: false,
     autosave_ask_before_unload: false,
-    toolbar: 'undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsizeselect fontselect formatselect styleselect insertfile | styleselect | ' +
+    toolbar: 'undo redo sidebar1 | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | align lineheight fontsize fontfamily blocks styles insertfile | styles | ' +
     'bullist numlist outdent indent | link image | print preview media | forecolor backcolor emoticons table codesample code language | ltr rtl',
     contextmenu: 'link linkchecker image table lists configurepermanentpen',
 
     // Multiple toolbar array
-    // toolbar: ['undo redo sidebar1 align fontsizeselect insertfile | fontselect formatselect styleselect insertfile | styleselect | bold italic',
+    // toolbar: ['undo redo sidebar1 align fontsize insertfile | fontfamily blocks styles insertfile | styles | bold italic',
     // 'alignleft aligncenter alignright alignjustify | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl',
     // 'bullist numlist outdent indent | link image'],
 
     // Toolbar<n>
-    // toolbar1: 'undo redo sidebar1 align fontsizeselect insertfile | fontselect formatselect styleselect insertfile | styleselect | bold italic',
+    // toolbar1: 'undo redo sidebar1 align fontsize insertfile | fontfamily blocks styles insertfile | styles | bold italic',
     // toolbar2: 'alignleft aligncenter alignright alignjustify | print preview media | forecolor backcolor emoticons table codesample code | ltr rtl',
     // toolbar3: 'bullist numlist outdent indent | link image',
 
@@ -116,7 +147,7 @@ export default () => {
     //     name: 'history', items: [ 'undo', 'redo' ]
     //   },
     //   {
-    //     name: 'styles', items: [ 'styleselect' ]
+    //     name: 'styles', items: [ 'styles' ]
     //   },
     //   {
     //     name: 'formatting', items: [ 'bold', 'italic']

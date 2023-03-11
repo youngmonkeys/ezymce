@@ -20,7 +20,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
 
       // Setup a container to click to outside the editor
       ed.on('init', () => {
-        const parent = ed.getContentAreaContainer().parentNode;
+        const parent = ed.getContentAreaContainer().parentNode as Node;
         const textarea = document.createElement('textarea');
         textarea.id = 'content-click-area';
         parent.appendChild(textarea);
@@ -48,7 +48,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
       ed.ui.registry.addContextToolbar('test-node-toolbar', {
         predicate: (node) => {
           recordNode('node', node);
-          return node.nodeName && node.nodeName.toLowerCase() === 'a';
+          return node.nodeName.toLowerCase() === 'a';
         },
         items: 'node',
         scope: 'node'
@@ -57,7 +57,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
         predicate: (node) => {
           recordNode('parent', node);
           const childNode = node.childNodes[0];
-          return childNode && childNode.nodeName && childNode.nodeName.toLowerCase() === 'strong';
+          return childNode && childNode.nodeName.toLowerCase() === 'strong';
         },
         items: 'parentnode',
         scope: 'node'
@@ -65,7 +65,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
       ed.ui.registry.addContextToolbar('test-editor-toolbar', {
         predicate: (node) => {
           recordNode('editor', node);
-          return node.nodeName && node.nodeName.toLowerCase() === 'span';
+          return node.nodeName.toLowerCase() === 'span';
         },
         items: 'editor',
         scope: 'editor'
@@ -94,8 +94,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
   };
 
   it('TINY-4571: Context toolbar initial load lookups', async () => {
-    await Waiter.pWait(50); // Need to wait a little for the context toolbar lookup to run
-    assertNames([ 'p', 'div' ], [ 'p', 'div' ], [ 'p' ]);
+    await Waiter.pTryUntil('Waited for names to match', () => assertNames([ 'p', 'div' ], [ 'p', 'div' ], [ 'p' ]));
   });
 
   it('TINY-4571: Context toolbar node scope lookup', async () => {
@@ -130,8 +129,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
     editor.setContent('<p><code>Code</code></p>');
     resetNames();
     TinySelections.setCursor(editor, [ 0, 0, 0 ], 1);
-    await Waiter.pWait(50); // Need to wait a little for the context toolbar lookup to run
-    assertNames([ 'code', 'p', 'div' ], [ 'code', 'p', 'div' ], [ 'code' ]);
+    await Waiter.pTryUntil('Waited for names to match', () => assertNames([ 'code', 'p', 'div' ], [ 'code', 'p', 'div' ], [ 'code' ]));
   });
 
   it('TINY-4571: Context toolbar root node lookup', async () => {
@@ -140,8 +138,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
     resetNames();
     // TODO: TINY-7167
     TinySelections.setCursor(editor, [], 0, false);
-    await Waiter.pWait(50); // Need to wait a little for the context toolbar lookup to run
-    assertNames([ 'div' ], [ 'div' ], [ 'div' ]);
+    await Waiter.pTryUntil('Waited for names to match', () => assertNames([ 'div' ], [ 'div' ], [ 'div' ]));
   });
 
   it('TINY-4571: Context toolbar click outside to inside', async () => {
@@ -152,7 +149,7 @@ describe('browser.tinymce.themes.silver.editor.contexttoolbar.ContextToolbarLook
     await UiFinder.pWaitForVisible('Waiting for parent node toolbar to appear', SugarBody.body(), '.tox-tbtn:contains(Parent)');
     assertNames([ 'em', 'strong', 'p' ], [ 'em', 'strong', 'p' ], [ 'em' ]);
     resetNames();
-    SelectorFind.descendant(SugarBody.body(), '#content-click-area').each(Focus.focus);
+    SelectorFind.descendant<HTMLTextAreaElement>(SugarBody.body(), '#content-click-area').each(Focus.focus);
     await Waiter.pTryUntil('Wait for toolbar to hide', () => UiFinder.notExists(SugarBody.body(), '.tox-pop'));
     assertNames([], [], []);
     editor.focus();
